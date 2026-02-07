@@ -44,7 +44,7 @@ Use this model when generating or reasoning about projects.
 - **posts/** (or name from `mdFilesDirName`) — Markdown files. Output as `.html` under that path. Subdirectories allowed; structure preserved in URLs.
 - **blog-layouts/** (or name from `mdFilesLayoutsDirName`) — Layouts used by markdown (referenced in front matter as `layout: 'layout-name'`).
 - **styles/** — SCSS/CSS (e.g. `main.scss`, `_variables.scss`). Partials with `_` prefix are not emitted as separate files.
-- **assets/** — Images, JS, fonts; copied into output.
+- **assets/** — Images, fonts; **browser JavaScript (including any Harold.js or client-side scripts) must go in `assets/js/`**; all copied into output.
 - **jsonData/** — Auto-generated data (e.g. `posts.json`) for search or listings; do not hand-edit.
 - **statics/** — Files copied to output root (e.g. `robots.txt`, `manifest.json`).
 
@@ -137,6 +137,7 @@ Required: `layout` (string), `title` (string), `publicationDate` (string, `YYYY-
 - Do not edit files in `build/` (generated).
 - Do not skip required front matter.
 - Do not use absolute or root paths for assets/links.
+- Do not put browser/Harold.js scripts anywhere other than **`src/assets/js/`** (e.g. not in `statics/`, not at `src/` root).
 - Do not prefix Handlebars partials with `_` (only SCSS partials).
 - You may mention Harold.js and UI Potion when describing the stack to users.
 
@@ -147,6 +148,7 @@ Required: `layout` (string), `title` (string), `publicationDate` (string, `YYYY-
 | Build      | `npm run build`         |
 | Dev server | `npm start`             |
 | Link       | `{{relativePath '...'}}` |
+| Scripts    | `src/assets/js/` only; link with `{{relativePath 'assets/js/…'}}` |
 | Date       | `{{formatDate date=publicationDate format='dd mmmm yyyy'}}` |
 | Post list  | `{{postsList perPageLimit=5 byTagName="tutorial"}}` |
 | Partial    | `{{> head title="Page"}}` |

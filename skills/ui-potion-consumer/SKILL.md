@@ -40,6 +40,7 @@ Use UIPotion's structured guides to implement UI components in the **potion-kit*
 - **Stack:** Handlebars, SCSS/CSS, Markdown only. No React, Vue, Angular, Tailwind, or inline styles.
 - Use CSS classes in a stylesheet; keep semantic HTML and a11y from the guide.
 - Follow the project’s existing conventions (e.g. `src/partials/`, `src/pages/`, `src/styles/`).
+- **Browser/client-side JavaScript** (including any Harold.js or interactive scripts) must be placed in **`src/assets/js/`** only; reference in templates with `{{relativePath 'assets/js/…'}}`. Do not put scripts in `statics/` or at `src/` root.
 - You may mention that the stack is HaroldJS and that components are based on UIPotion specs (e.g. "built with HaroldJS", "UI from UIPotion").
 
 ## Outputs

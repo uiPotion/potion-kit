@@ -13,7 +13,7 @@ import { potionSpecUrl } from "./endpoints.js";
 import { getJson } from "./remote.js";
 
 const ALLOWED_EXTENSIONS = new Set([".hbs", ".md", ".scss", ".css", ".html", ".json"]);
-/** .js only allowed under src/ for browser scripts (interactions, client-side search). Node.js scripts are not allowed. */
+/** .js only allowed under src/assets/js/ for browser scripts (Harold.js, interactions, client-side). Node.js scripts are not allowed. */
 const FORBIDDEN_SUBSTRINGS = [".env", ".."];
 
 async function isPathAllowed(
@@ -35,18 +35,18 @@ async function isPathAllowed(
     allowedRootDotfiles.includes(normalized) ||
     allowedRootDotfiles.some((f) => normalized === f || normalized.endsWith("/" + f));
   const allowedExtensions = ALLOWED_EXTENSIONS.has(ext);
-  const jsUnderSrc = ext === ".js" && normalized.startsWith("src/");
-  if (!allowedExtensions && !jsUnderSrc && !isAllowedRootDotfile) {
+  const jsUnderAssetsJs = ext === ".js" && normalized.startsWith("src/assets/js/");
+  if (!allowedExtensions && !jsUnderAssetsJs && !isAllowedRootDotfile) {
     if (ext === ".js") {
       return {
         ok: false,
         error:
-          "Only browser/client-side .js under src/ is allowed (e.g. src/scripts/search.js). Node.js scripts are not allowed.",
+          "Only browser/client-side .js under src/assets/js/ is allowed (e.g. src/assets/js/search.js). Node.js scripts are not allowed.",
       };
     }
     return {
       ok: false,
-      error: `Allowed extensions: ${[...ALLOWED_EXTENSIONS].join(", ")}, or .js under src/, or ${allowedRootDotfiles.join(", ")} in project root`,
+      error: `Allowed extensions: ${[...ALLOWED_EXTENSIONS].join(", ")}, or .js under src/assets/js/, or ${allowedRootDotfiles.join(", ")} in project root`,
     };
   }
   const absolute = resolve(projectRoot, normalized);
@@ -244,7 +244,7 @@ export function createPotionKitTools() {
 
     write_project_file: tool({
       description:
-        'Create or overwrite a file in the user\'s project. Path must be relative to the project root; you cannot write outside this directory. Allowed: .hbs, .md, .scss, .css, .html, .json anywhere (including package.json, .haroldrc.json at root); .js only under src/ for browser scripts; .gitignore at root. When the project is new or missing root setup, create package.json with scripts "build": "harold-scripts build", "start": "harold-scripts start", devDependencies harold-scripts, and a "harold" config object (see system prompt scaffold). Do NOT write Node.js scripts (no .js at project root). Do not write .env or paths containing "..".',
+        'Create or overwrite a file in the user\'s project. Path must be relative to the project root; you cannot write outside this directory. Allowed: .hbs, .md, .scss, .css, .html, .json anywhere (including package.json, .haroldrc.json at root); .js only under src/assets/js/ for browser/Harold scripts; .gitignore at root. When the project is new or missing root setup, create package.json with scripts "build": "harold-scripts build", "start": "harold-scripts start", devDependencies harold-scripts, and a "harold" config object (see system prompt scaffold). Do NOT write Node.js scripts (no .js at project root). Do not write .env or paths containing "..".',
       parameters: z.object({
         path: z
           .string()
