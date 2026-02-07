@@ -21,7 +21,7 @@ export default [
         exports: "writable",
       },
       parserOptions: {
-        projectService: true,
+        project: "./tsconfig.eslint.json",
         tsconfigRootDir: import.meta.dirname,
       },
     },

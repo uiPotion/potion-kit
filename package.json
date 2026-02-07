@@ -8,16 +8,17 @@
     "potion-kit": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "prepare": "node .husky/install.mjs",
     "prepublishOnly": "npm run build",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "lint": "eslint src/ test/",
+    "lint:fix": "eslint src/ test/ --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "pre-commit": "lint-staged && npm run typecheck"
   },
   "keywords": [
@@ -66,6 +67,7 @@
     "husky": "^9.0.0",
     "lint-staged": "^16.0.0",
     "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.54.0"
   },

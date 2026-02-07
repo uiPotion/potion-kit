@@ -8,6 +8,7 @@ import { runChat } from "./commands/chat.js";
 import { runClear } from "./commands/clear.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// Built output is dist/index.js → package.json is one level up
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as {
   version?: string;
 };
