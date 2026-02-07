@@ -48,10 +48,10 @@ export function formatPotionsCatalog(index: PotionsIndex): string {
     byCategory.get(cat)!.push(p);
   }
 
+  const EXCERPT_MAX = 58; // enough to hint at interactions (e.g. "typing indicators") without reverting to 80
   const lines: string[] = [
-    "## UI POTIONS (component and layout guides)",
-    "",
-    "You have access to these UIPotion guides. Use them when the user asks for a layout, component, feature, or pattern. When you need the full spec to generate code, call get_potion_spec(category, id) with the category and id below.",
+    "## UI POTIONS",
+    "Use get_potion_spec(category, id) for the full guide before generating. Implement the spec fully (transitions, states, interactions); use mock data/API so demos work. Categories: layouts, components, features, patterns, tooling.",
     "",
   ];
 
@@ -61,7 +61,7 @@ export function formatPotionsCatalog(index: PotionsIndex): string {
     lines.push(`### ${cat}`);
     for (const p of list) {
       const excerpt = p.excerpt
-        ? ` — ${p.excerpt.slice(0, 80)}${p.excerpt.length > 80 ? "..." : ""}`
+        ? ` — ${p.excerpt.slice(0, EXCERPT_MAX)}${p.excerpt.length > EXCERPT_MAX ? "…" : ""}`
         : "";
       lines.push(`- **${p.id}**: ${p.name}${excerpt}`);
     }
@@ -78,7 +78,7 @@ export function formatPotionsCatalog(index: PotionsIndex): string {
   }
 
   lines.push(
-    "When to reach for them: use **layouts** for full-page structure (dashboard, landing, docs); **components** for reusable UI (buttons, nav, cards, forms); **features** for complete flows (pricing, auth); **patterns** for interaction/design patterns; **tooling** for dev tooling. Always call get_potion_spec(category, id) to fetch the full JSON guide before generating code from a potion."
+    "Always get_potion_spec(category, id) before generating; implement the spec fully and use mock data so interactive demos work."
   );
   return lines.join("\n");
 }

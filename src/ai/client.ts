@@ -23,7 +23,17 @@ export interface CreateChatOptions {
 }
 
 const REQUEST_TIMEOUT_MS = 300_000; // 5 minutes (multi-step tool use can be slow)
-const MAX_STEPS = 16; // tool rounds (search, spec, read, write) plus a final text reply; scaffold can need many writes
+const MAX_STEPS = 8; // tool rounds per turn; lower to reduce token usage and stay under rate limits
+const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // wait 1 min before single retry on 429 (limit is per minute)
+
+function isRateLimitError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /rate limit|30,000 input tokens per minute|429/i.test(msg);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /**
  * Create a chat that uses the AI SDK with the configured provider.
@@ -52,14 +62,15 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-      try {
-        const result = await generateText({
+      const doRequest = async () =>
+        generateText({
           model,
           system: system ?? undefined,
           messages: conversation,
           tools,
           maxSteps: MAX_STEPS,
           maxTokens: 16_384, // per-step output limit; "length" finish = hit this before replying
+          maxRetries: 0, // we handle 429 ourselves with one delayed retry
           abortSignal: controller.signal,
           onStepFinish: (stepResult) => {
             stepCount++;
@@ -76,6 +87,18 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
             }
           },
         });
+
+      type ChatResult = { text?: string; steps: Array<{ text?: string }>; finishReason: string };
+      let result: ChatResult;
+      try {
+        result = (await doRequest()) as ChatResult;
+      } catch (firstErr) {
+        if (!isRateLimitError(firstErr)) throw firstErr;
+        await sleep(RATE_LIMIT_RETRY_DELAY_MS);
+        result = (await doRequest()) as ChatResult;
+      }
+
+      try {
         const text = result.text?.trim() ?? "";
         if (text) return text;
         const fromSteps = result.steps

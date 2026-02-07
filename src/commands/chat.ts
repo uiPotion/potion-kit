@@ -22,12 +22,21 @@ const DEFAULT_MESSAGE =
 
 const EXIT_COMMANDS = ["exit", "quit", "q"];
 
+/** Max conversation turns sent to the API (user + assistant pairs). Older messages stay on disk but are not sent to reduce token usage. */
+const MAX_HISTORY_MESSAGES = 10;
+
 function formatChatError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (/not a chat model|v1\/chat\/completions|v1\/completions/i.test(msg)) {
     return (
       msg +
       "\n\nUse a chat model (e.g. gpt-5.2, gpt-4o), not a completion-only model. Set POTION_KIT_MODEL in .env or ~/.potion-kit/config.json."
+    );
+  }
+  if (/rate limit|30,000 input tokens per minute/i.test(msg)) {
+    return (
+      msg +
+      "\n\nWait a minute and try again. To use fewer tokens: run `potion-kit clear` to start a fresh conversation, or shorten your message."
     );
   }
   return msg;
@@ -63,8 +72,10 @@ function buildMessages(
   history: HistoryMessage[],
   userMessage: string
 ): ChatMessage[] {
+  const tail =
+    history.length > MAX_HISTORY_MESSAGES ? history.slice(-MAX_HISTORY_MESSAGES) : history;
   const conversation = [
-    ...history.map((m) => ({ role: m.role, content: m.content })),
+    ...tail.map((m) => ({ role: m.role, content: m.content })),
     { role: "user" as const, content: userMessage },
   ];
   return [{ role: "system", content: systemPrompt }, ...conversation];
