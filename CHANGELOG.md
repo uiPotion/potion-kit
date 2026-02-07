@@ -17,4 +17,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Rate limit errors** — When you hit the API rate limit (e.g. 30,000 input tokens/min), the error message now suggests waiting a minute and running `potion-kit clear` to start a fresh conversation.
 
-[0.0.2]: https://github.com/uiPotion/potion-kit/compare/v0.0.1...v0.0.2
+[0.0.2]: https://github.com/uiPotion/potion-kit/compare/main...v0.0.2
