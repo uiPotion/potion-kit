@@ -1,7 +1,7 @@
 {
   "name": "potion-kit",
   "version": "0.0.1",
-  "description": "CLI to build Harold + UI Potion websites (Handlebars, Markdown, SCSS)",
+  "description": "CLI to build HaroldJS + UIPotion websites (Handlebars, Markdown, SCSS)",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

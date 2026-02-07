@@ -1,6 +1,6 @@
 # potion-kit
 
-CLI to build websites with **Harold** (haroldjs.com) and **UI Potion** (uipotion.com): static sites with Handlebars, Markdown, and SCSS only. Chat with the AI to design and build your site; the model uses the UI Potion catalog and Harold conventions and can only suggest components from real specs.
+CLI to build websites with **HaroldJS** (haroldjs.com) and **UIPotion** (uipotion.com): static sites with Handlebars, Markdown, and SCSS only. Chat with the AI to design and build your site; the model uses the UIPotion catalog and HaroldJS conventions and can only suggest components from real specs.
 
 ## Commands
 
@@ -21,7 +21,7 @@ To use chat from another directory (e.g. your project or the playground), run fr
 
 ## Usage
 
-Chat is the main way to interact with the AI. The model knows Harold’s structure and the UI Potion catalog; it uses tools to fetch real component specs and, when run from a project dir, can see your existing partials/pages/styles. If something is missing from context, it can fetch doc pages from haroldjs.com or uipotion.com only (fallback). You can build the site iteratively over multiple turns.
+Chat is the main way to interact with the AI. The model knows HaroldJS structure and the UIPotion catalog; it uses tools to fetch real component specs and, when run from a project dir, can see your existing partials/pages/styles. If something is missing from context, it can fetch doc pages from haroldjs.com or uipotion.com only (fallback). You can build the site iteratively over multiple turns.
 
 ### Interactive mode (recommended)
 

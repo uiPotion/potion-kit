@@ -1,15 +1,15 @@
 /**
- * All remote endpoints used by potion-kit (npm, UI Potion, doc allowlist).
+ * All remote endpoints used by potion-kit (npm, UIPotion, doc allowlist).
  * Single source of truth for URLs and allowlisted hosts.
  */
 
 /** npm registry base (no trailing slash). */
 export const NPM_REGISTRY_BASE = "https://registry.npmjs.org";
 
-/** UI Potion site base (no trailing slash). */
+/** UIPotion site base (no trailing slash). */
 export const UIPOTION_BASE = "https://uipotion.com";
 
-/** Harold.js doc site hostnames (for fetch_doc_page allowlist). */
+/** HaroldJS doc site hostnames (for fetch_doc_page allowlist). */
 export const DOC_ALLOWED_HOSTS = new Set([
   "haroldjs.com",
   "www.haroldjs.com",
@@ -22,7 +22,7 @@ export function npmPackageLatestUrl(packageName: string): string {
   return `${NPM_REGISTRY_BASE}/${packageName}/latest`;
 }
 
-/** URL for the UI Potion potions index JSON. */
+/** URL for the UIPotion potions index JSON. */
 export const potionsIndexUrl = `${UIPOTION_BASE}/potions-index.json`;
 
 /** URL for a single potion spec JSON (category + id). */

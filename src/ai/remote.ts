@@ -1,5 +1,5 @@
 /**
- * Central HTTP service for all remote calls (npm, UI Potion, doc pages).
+ * Central HTTP service for all remote calls (npm, UIPotion, doc pages).
  * Uses endpoints from ./endpoints.js and supports timeout and optional headers.
  */
 

@@ -1,6 +1,6 @@
 ---
 name: ui-potion-discovery
-description: Find the best UI Potion guide for a component, layout, or feature by searching the index and returning JSON guide URLs and human-readable page URLs. Use when the user wants a potion but hasn’t specified which one, or when implementing add-potion discovery.
+description: Find the best UIPotion guide for a component, layout, or feature by searching the index and returning JSON guide URLs and human-readable page URLs. Use when the user wants a potion but hasn’t specified which one, or when implementing add-potion discovery.
 license: MIT
 metadata:
   author: ui-potion
@@ -9,11 +9,11 @@ metadata:
 compatibility: Requires network access to fetch https://uipotion.com indexes.
 ---
 
-# UI Potion Discovery (potion-kit)
+# UIPotion Discovery (potion-kit)
 
 ## Purpose
 
-Help find the most relevant UI Potion guides for a user request so potion-kit (or the agent) can implement with the **ui-potion-consumer** skill.
+Help find the most relevant UIPotion guides for a user request so potion-kit (or the agent) can implement with the **ui-potion-consumer** skill.
 
 ## When to use
 

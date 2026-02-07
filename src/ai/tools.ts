@@ -121,7 +121,7 @@ export function createPotionKitTools() {
   return {
     search_potions: tool({
       description:
-        "Search the UI Potion index for components or layouts by keyword or category. Returns matching potions with id, name, category, excerpt. Use this to find which potions exist before suggesting or generating anything.",
+        "Search the UIPotion index for components or layouts by keyword or category. Returns matching potions with id, name, category, excerpt. Use this to find which potions exist before suggesting or generating anything.",
       parameters: z.object({
         query: z.string().describe('Search query (e.g. "dashboard", "navbar", "button")'),
         category: z
@@ -163,7 +163,7 @@ export function createPotionKitTools() {
 
     get_potion_spec: tool({
       description:
-        "Fetch the full JSON spec for a single UI Potion guide. Call with category and id from search_potions. Do not invent category or id.",
+        "Fetch the full JSON spec for a single UIPotion guide. Call with category and id from search_potions. Do not invent category or id.",
       parameters: z.object({
         category: z.string().describe("Category (e.g. layouts, components)"),
         id: z.string().describe("Potion id (e.g. dashboard, button)"),
@@ -181,7 +181,7 @@ export function createPotionKitTools() {
 
     get_harold_project_info: tool({
       description:
-        "Get info about the current static site project (if any): Harold config (.haroldrc.json or package.json), existing partials, pages, styles, blog layouts. Returns only structure (file names and config), NOT file contents. When the user is iterating or asking for a fix, call read_project_file for the relevant file(s) to get current content before editing. If the dir is empty or not a Harold project, the response will say so; then scaffold with the standard layout (one main.scss, no @import/@use).",
+        "Get info about the current static site project (if any): HaroldJS config (.haroldrc.json or package.json), existing partials, pages, styles, blog layouts. Returns only structure (file names and config), NOT file contents. When the user is iterating or asking for a fix, call read_project_file for the relevant file(s) to get current content before editing. If the dir is empty or not a HaroldJS project, the response will say so; then scaffold with the standard layout (one main.scss, no @import/@use).",
       parameters: z.object({}),
       execute: async () => {
         try {
@@ -227,7 +227,7 @@ export function createPotionKitTools() {
 
     fetch_doc_page: tool({
       description:
-        "Fallback only: fetch the text content of a page from haroldjs.com or uipotion.com. You can fetch jsonData/posts.json first (e.g. https://www.haroldjs.com/jsonData/posts.json or https://uipotion.com/jsonData/posts.json) to get the doc index, then open specific pages. Use only when the information is not in the Harold context or Potion specs (search_potions / get_potion_spec). Only for these two domains.",
+        "Fallback only: fetch the text content of a page from haroldjs.com or uipotion.com. You can fetch jsonData/posts.json first (e.g. https://www.haroldjs.com/jsonData/posts.json or https://uipotion.com/jsonData/posts.json) to get the doc index, then open specific pages. Use only when the information is not in the HaroldJS context or Potion specs (search_potions / get_potion_spec). Only for these two domains.",
       parameters: z.object({
         url: z
           .string()

@@ -23,14 +23,14 @@ export const cli = {
   intro: (s: string) => chalk.dim(s),
 } as const;
 
-/** Map internal tool names to short, user-friendly progress labels. Each used at most once per step. */
+/** Map internal tool names to short, user-friendly progress labels. Mention HaroldJS or UIPotion where relevant. */
 const TOOL_PROGRESS_LABELS: Record<string, string> = {
-  search_potions: "Searching UI Potion",
-  get_potion_spec: "Fetching component spec",
-  get_harold_project_info: "Inspecting project structure",
-  read_project_file: "Reading project files",
-  fetch_doc_page: "Loading documentation",
-  write_project_file: "Writing files",
+  search_potions: "Searching UIPotion catalog",
+  get_potion_spec: "Fetching UIPotion spec",
+  get_harold_project_info: "HaroldJS: inspecting project",
+  read_project_file: "HaroldJS: reading files",
+  fetch_doc_page: "Loading docs (HaroldJS / UIPotion)",
+  write_project_file: "HaroldJS: writing files",
 };
 
 /**

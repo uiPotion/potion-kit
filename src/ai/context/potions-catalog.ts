@@ -1,5 +1,5 @@
 /**
- * Fetch the UI Potion index and return a text catalog so the model knows
+ * Fetch the UIPotion index and return a text catalog so the model knows
  * what potions exist and when to reach for them. Injected into the system prompt.
  */
 
@@ -23,7 +23,7 @@ export interface PotionsIndex {
 }
 
 /**
- * Fetch potions-index.json from UI Potion. Returns null on network/parse error.
+ * Fetch potions-index.json from UIPotion. Returns null on network/parse error.
  */
 export async function fetchPotionsIndex(): Promise<PotionsIndex | null> {
   return getJson<PotionsIndex>(potionsIndexUrl);
@@ -38,7 +38,7 @@ const CATEGORY_ORDER = ["layouts", "components", "features", "patterns", "toolin
 export function formatPotionsCatalog(index: PotionsIndex): string {
   const potions = index.potions ?? [];
   if (potions.length === 0) {
-    return "No UI Potions catalog available. Use search_potions and get_potion_spec tools to discover guides.";
+    return "No UIPotion catalog available. Use search_potions and get_potion_spec tools to discover guides.";
   }
 
   const byCategory = new Map<string, PotionIndexEntry[]>();
@@ -51,7 +51,7 @@ export function formatPotionsCatalog(index: PotionsIndex): string {
   const lines: string[] = [
     "## UI POTIONS (component and layout guides)",
     "",
-    "You have access to these UI Potion guides. Use them when the user asks for a layout, component, feature, or pattern. When you need the full spec to generate code, call get_potion_spec(category, id) with the category and id below.",
+    "You have access to these UIPotion guides. Use them when the user asks for a layout, component, feature, or pattern. When you need the full spec to generate code, call get_potion_spec(category, id) with the category and id below.",
     "",
   ];
 
@@ -90,7 +90,7 @@ export function formatPotionsCatalog(index: PotionsIndex): string {
 export async function getPotionsCatalogText(): Promise<string> {
   const index = await fetchPotionsIndex();
   if (!index) {
-    return "UI Potions catalog could not be loaded. Use search_potions and get_potion_spec tools to discover and fetch guides.";
+    return "UIPotion catalog could not be loaded. Use search_potions and get_potion_spec tools to discover and fetch guides.";
   }
   return formatPotionsCatalog(index);
 }

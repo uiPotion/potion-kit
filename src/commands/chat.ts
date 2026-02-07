@@ -18,7 +18,7 @@ import type { HistoryMessage } from "./chat-history.js";
 import { cli, buildProgressMessage } from "../cli/formatting.js";
 
 const DEFAULT_MESSAGE =
-  "What can you help me build? I’d like to create a static site with Handlebars and the UI Potion components.";
+  "What can you help me build? I’d like to create a static site with Handlebars and the UIPotion components.";
 
 const EXIT_COMMANDS = ["exit", "quit", "q"];
 

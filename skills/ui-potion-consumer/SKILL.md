@@ -1,6 +1,6 @@
 ---
 name: ui-potion-consumer
-description: Discover and apply UI Potion component and layout guides; load JSON specs and adapt them to Handlebars + SCSS + Markdown. Use when implementing add-potion, or when the user requests a UI component, layout, or feature from UI Potion.
+description: Discover and apply UIPotion component and layout guides; load JSON specs and adapt them to Handlebars + SCSS + Markdown. Use when implementing add-potion, or when the user requests a UI component, layout, or feature from UIPotion.
 license: MIT
 metadata:
   author: ui-potion
@@ -9,16 +9,16 @@ metadata:
 compatibility: Requires network access to fetch https://uipotion.com manifests and guides.
 ---
 
-# UI Potion Consumer (potion-kit)
+# UIPotion Consumer (potion-kit)
 
 ## Purpose
 
-Use UI Potion's structured guides to implement UI components in the **potion-kit** stack: **Handlebars partials/pages, SCSS, and Markdown** (for content only). Do not output React, Vue, Tailwind, or other frameworks.
+Use UIPotion's structured guides to implement UI components in the **potion-kit** stack: **Handlebars partials/pages, SCSS, and Markdown** (for content only). Do not output React, Vue, Tailwind, or other frameworks.
 
 ## When to use
 
 - Implementing the **add-potion** command or generating from a potion.
-- The user asks for a UI component, layout, or feature and you have or can fetch a UI Potion guide.
+- The user asks for a UI component, layout, or feature and you have or can fetch a UIPotion guide.
 - You need a framework-agnostic spec to implement UI in Handlebars + SCSS.
 
 ## Inputs
@@ -40,7 +40,7 @@ Use UI Potion's structured guides to implement UI components in the **potion-kit
 - **Stack:** Handlebars, SCSS/CSS, Markdown only. No React, Vue, Angular, Tailwind, or inline styles.
 - Use CSS classes in a stylesheet; keep semantic HTML and a11y from the guide.
 - Follow the project’s existing conventions (e.g. `src/partials/`, `src/pages/`, `src/styles/`).
-- You may mention that the stack is Harold.js and that components are based on UI Potion specs (e.g. "built with Harold.js", "UI from UI Potion").
+- You may mention that the stack is HaroldJS and that components are based on UIPotion specs (e.g. "built with HaroldJS", "UI from UIPotion").
 
 ## Outputs
 

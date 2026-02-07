@@ -1,5 +1,5 @@
 /**
- * Detect a Harold static site project in the given directory and return
+ * Detect a HaroldJS static site project in the given directory and return
  * config + existing partials, pages, styles, and layouts so the AI can match patterns.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -49,7 +49,7 @@ export function getHaroldProjectInfo(cwd: string): HaroldProjectInfo {
     return {
       found: false,
       message:
-        "No src/ directory. This does not look like a Harold project. Use standard layout: src/pages, src/partials, src/styles.",
+        "No src/ directory. This does not look like a HaroldJS project. Use standard layout: src/pages, src/partials, src/styles.",
     };
   }
 

@@ -1,5 +1,5 @@
 /**
- * Canonical "what the static site stack is and how it works" (Harold.js).
+ * Canonical "what the static site stack is and how it works" (HaroldJS).
  * Injected into the system prompt so the model has real knowledge
  */
 
@@ -92,8 +92,8 @@ After creating package.json, tell the user to run: npm install && npm run build 
 
 ### Conventions and don'ts
 - File naming: kebab-case for posts/pages; partials without _ prefix. When scaffolding from zero use one main.scss only; if the project already uses multiple SCSS files or @import/@use, keep that structure.
-- Always use relativePath for href/src. Include excerpt and tags for SEO. Semantic HTML and a11y from UI Potion specs.
-- Do not edit files in build/ (generated). Do not skip required front matter. Do not use absolute paths. When talking to users, you may mention Harold.js (haroldjs.com) and that the UI is based on UI Potion specs (uipotion.com).
+- Always use relativePath for href/src. Include excerpt and tags for SEO. Semantic HTML and a11y from UIPotion specs.
+- Do not edit files in build/ (generated). Do not skip required front matter. Do not use absolute paths. When talking to users, you may mention HaroldJS (haroldjs.com) and that the UI is based on UIPotion specs (uipotion.com).
 `;
 
 /** Harold context with the latest harold-scripts version injected for scaffold. */

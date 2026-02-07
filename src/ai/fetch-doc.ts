@@ -1,6 +1,6 @@
 /**
  * Fetch a doc page or jsonData/posts.json from allowlisted domains only
- * (haroldjs.com, uipotion.com). Harold sites always generate jsonData/posts.json
+ * (haroldjs.com, uipotion.com). HaroldJS sites always generate jsonData/posts.json
  * with the doc index (fileName, title, excerpt, etc.). The model can fetch that
  * first, then open specific pages. Used as a fallback when info isn't in context
  * or Potion specs.
