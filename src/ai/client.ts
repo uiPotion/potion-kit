@@ -16,6 +16,10 @@ export interface ChatMessage {
 export interface CreateChatOptions {
   /** Called when the model makes progress (e.g. step N of M, tool names). Use for user-facing progress. */
   onProgress?: (message: string) => void;
+  /** Optional: build a user-friendly progress message from step and tool names (unique tools only). */
+  progressMessageBuilder?: (step: number, maxSteps: number, toolNames: string[]) => string;
+  /** Optional: called for error messages (e.g. no text from model). If not set, uses console.error. */
+  onError?: (message: string) => void;
 }
 
 const REQUEST_TIMEOUT_MS = 300_000; // 5 minutes (multi-step tool use can be slow)
@@ -27,7 +31,7 @@ const MAX_STEPS = 8; // enough for tool rounds (search, get spec, write files) p
  * Tools (search_potions, get_potion_spec, get_harold_project_info, fetch_doc_page, write_project_file) are always available; multi-step so the model can call tools then reply.
  */
 export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
-  const { onProgress } = options;
+  const { onProgress, progressMessageBuilder, onError } = options;
   const model =
     config.provider === "openai"
       ? createOpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl })(config.model)
@@ -60,10 +64,15 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
           onStepFinish: (stepResult) => {
             stepCount++;
             if (onProgress) {
-              const toolNames = stepResult.toolCalls?.length
-                ? ` (${(stepResult.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName).join(", ")})`
-                : "";
-              onProgress(`Step ${stepCount}/${MAX_STEPS}${toolNames}…`);
+              const rawNames =
+                (stepResult.toolCalls as Array<{ toolName: string }> | undefined)?.map(
+                  (t) => t.toolName
+                ) ?? [];
+              const uniqueNames = [...new Set(rawNames)];
+              const message = progressMessageBuilder
+                ? progressMessageBuilder(stepCount, MAX_STEPS, uniqueNames)
+                : `Step ${stepCount} (of up to ${MAX_STEPS})${uniqueNames.length ? ` — ${uniqueNames.join(", ")}` : " — Thinking"}…`;
+              onProgress(message);
             }
           },
         });
@@ -83,9 +92,9 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
           return combined;
         }
         // No text in any step: log why and give a helpful fallback when hit length limit
-        console.error(
-          `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${result.steps.length}). Try asking again.`
-        );
+        const errMsg = `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${result.steps.length}). Try asking again.`;
+        if (onError) onError(errMsg);
+        else console.error(errMsg);
         if (result.finishReason === "length") {
           return "The reply was cut off by the output length limit, but any file creation in earlier steps should have completed. Check your project for new files (e.g. under src/). You can run the build and ask for follow-up changes.";
         }
