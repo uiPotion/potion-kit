@@ -1,0 +1,28 @@
+{
+  "name": "potion-kit",
+  "version": "0.0.1",
+  "description": "CLI to build Harold + UI Potion websites (Handlebars, Markdown, SCSS)",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": { "potion-kit": "dist/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["harold", "uipotion", "static-site", "cli"],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "ai": "^4.0.0",
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
+    "commander": "^12.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": { "node": ">=20" }
+}

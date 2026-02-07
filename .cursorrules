@@ -1,0 +1,224 @@
+# potion-kit — Cursor rules
+
+This repo builds **potion-kit**, a CLI that builds static websites in a single stack: **Handlebars, Markdown (with Front Matter), and SCSS**. Generated projects use harold-scripts for build and dev internally; **do not mention that name in CLI output, help text, prompts, or docs.** Users see “potion-kit” and “static site” / “project” only.
+
+---
+
+## 1. Project identity and wording
+
+- **Product name:** potion-kit. Commands and docs use `potion-kit` (e.g. `potion-kit init`, `potion-kit add-potion`).
+- **Do not** mention the name of the underlying static site generator in CLI output, help text, prompts, or docs. It is just the tool we use; users see “potion-kit” and “static site” / “project”, not the tool’s name.
+- Config and env live under `~/.potion-kit/`. Binary: `potion-kit` (e.g. `npx potion-kit`).
+
+---
+
+## 2. Output stack (the only stack we support)
+
+All generated sites use this stack only:
+
+- **Templating:** Handlebars (`.hbs`) for pages and partials.
+- **Content:** Markdown with YAML Front Matter (`.md`).
+- **Styles:** SCSS (or plain CSS in `.scss` files).
+- **Structure:** Source under `src/`; build output in a single output directory (e.g. `build/` or `dist/`).
+
+No React, Vue, Angular, or other frameworks. No Tailwind unless we explicitly add it later; for now use SCSS/CSS only.
+
+---
+
+## 3. Static site structure
+
+Use this model when generating or reasoning about projects.
+
+**Config (project root or in package.json):**
+
+- `mdFilesDirName`: directory for markdown files (default `posts`); name also used in URLs (e.g. `/posts/name-of-post`).
+- `mdFilesLayoutsDirName`: directory for markdown layouts (default `blog-layouts`).
+- `outputDirName`: build output directory (default `build`).
+- `hostDirName`: optional subdirectory when hosting in a subpath (e.g. `blog`).
+- `minifyHtml`, `minifyCss`: optional minification (default true).
+
+**Source layout under `src/`:**
+
+- **pages/** — Handlebars pages (e.g. `index.hbs`, `about.hbs`). Output as `.html` at site root.
+- **partials/** — Handlebars partials included via `{{> partialName}}` (with optional params).
+- **posts/** (or name from `mdFilesDirName`) — Markdown files. Output as `.html` under that path. Subdirectories allowed; structure preserved in URLs.
+- **blog-layouts/** (or name from `mdFilesLayoutsDirName`) — Layouts used by markdown (referenced in front matter as `layout: 'layout-name'`).
+- **styles/** — SCSS/CSS (e.g. `main.scss`, `_variables.scss`). Partials with `_` prefix are not emitted as separate files.
+- **assets/** — Images, JS, fonts; copied into output.
+- **jsonData/** — Auto-generated data (e.g. `posts.json`) for search or listings; do not hand-edit.
+- **statics/** — Files copied to output root (e.g. `robots.txt`, `manifest.json`).
+
+**Markdown front matter (required):**
+
+- `layout` — which layout from the layouts directory.
+- `title` — page title.
+- `publicationDate` — `YYYY-MM-DD`.
+
+Optional: `excerpt`, `tags` (array), `coverImage`, and any custom fields (all passed to the layout).
+
+**Handlebars helpers to respect when generating:**
+
+- `{{formatDate date=publicationDate format='...'}}` for dates.
+- `{{postsList ...}}` for post lists (perPageLimit, currentPage, className, byTagName, noTags, noExcerpt, noDate, etc.).
+- `{{relativePath 'path'}}` for links/assets so subdirectory hosting works.
+- `{{responsiveImg ...}}` for images (src, alt, width, height, loading, srcset, sizes).
+- `{{hostDirName}}` for subdirectory-aware output.
+
+Generate pages and partials that fit this structure; do not invent other generators or directory names.
+
+---
+
+## 4. Build process and behavior (implementation)
+
+Generated projects use **harold-scripts** for build and dev. When implementing `potion-kit init`, `dev`, or `build`, wire to the project’s npm scripts (e.g. `npm run build` → harold-scripts build, `npm start` → harold-scripts start). Do not mention “harold” or “harold-scripts” in any user-facing message.
+
+**What the build does:**
+
+1. Prepare directories (`build/`, `build/posts/`).
+2. Copy assets (`src/assets/` → `build/assets/`).
+3. Register Handlebars helpers (formatDate, postsList, relativePath, responsiveImg, hostDirName, etc.).
+4. Register partials (`src/partials/*.hbs`).
+5. Generate posts: Markdown + front matter → layout → HTML in `build/posts/`.
+6. Generate styles: SCSS → CSS → `build/styles/`.
+7. Generate pages: `src/pages/*.hbs` → HTML at build root.
+8. Copy JSON data (e.g. `posts.json`) and statics to build.
+
+**Commands (in generated projects):**
+
+- `npm run build` — full build (runs harold-scripts build).
+- `npm start` — build + dev server (e.g. localhost:3000) + watch (runs harold-scripts start).
+
+**Front matter (critical):**
+
+Required: `layout` (string), `title` (string), `publicationDate` (string, `YYYY-MM-DD`). Optional: `excerpt`, `tags` (array), `coverImage`. Use LF line endings; CRLF can break parsing.
+
+**Pages (.hbs):**
+
+- No DOCTYPE/HTML in page files (added by layout).
+- Use `{{> partialName}}` for header/footer; `{{relativePath 'path'}}` for all links and assets.
+- Example: `{{postsList perPageLimit=3 currentPage=1 byTagName="featured" dateFormat="dd mmmm yyyy"}}`.
+
+**Layouts (blog):**
+
+- Wrap post content; receive `title`, `excerpt`, `publicationDate`, `tags`, `coverImage`, `{{{content}}}` (triple braces for HTML).
+
+**Partials:**
+
+- Live in `src/partials/`; names without `_` prefix (e.g. `head.hbs`, `footer.hbs`). Use `{{> head title="Page"}}`.
+
+**SCSS:**
+
+- Main files (no `_`): e.g. `main.scss` → compiled. Partials (`_variables.scss`, `_utils.scss`) are imported only. Use `@use` or `@import`; variables → mixins → base → components.
+
+**Images:**
+
+- In Markdown or HTML: add `loading="lazy"`, `decoding="async"`; width/height from file when possible. Use `{{relativePath 'assets/...'}}` or `{{responsiveImg ...}}`.
+
+**Config (.haroldrc.json or similar):**
+
+- `mdFilesDirName`, `mdFilesLayoutsDirName`, `outputDirName`, `hostDirName`, `minifyCss`, `minifyHtml`. Config discovery via cosmiconfig (project root).
+
+**Common errors:**
+
+- Missing front matter keys → ensure `layout`, `title`, `publicationDate` on every post.
+- Wrong date format → use `YYYY-MM-DD` string.
+- Images/links broken → use `{{relativePath '...'}}`, never hardcoded `/` or absolute URLs.
+- Partials: no `_` prefix in filename; SCSS partials use `_`.
+
+**Best practices:**
+
+- Front matter: single quotes, `YYYY-MM-DD`, tags as array.
+- File naming: kebab-case for posts/pages; partials without `_`; SCSS partials with `_`.
+- Always use `relativePath` for href/src.
+- Include excerpt and tags for SEO; semantic HTML and a11y from UI Potion specs.
+
+**Critical don’ts:**
+
+- Do not edit files in `build/` (generated).
+- Do not skip required front matter.
+- Do not use absolute or root paths for assets/links.
+- Do not prefix Handlebars partials with `_` (only SCSS partials).
+- You may mention Harold.js and UI Potion when describing the stack to users.
+
+**Quick reference:**
+
+| Task        | In generated project   |
+|------------|-------------------------|
+| Build      | `npm run build`         |
+| Dev server | `npm start`             |
+| Link       | `{{relativePath '...'}}` |
+| Date       | `{{formatDate date=publicationDate format='dd mmmm yyyy'}}` |
+| Post list  | `{{postsList perPageLimit=5 byTagName="tutorial"}}` |
+| Partial    | `{{> head title="Page"}}` |
+
+---
+
+## 5. UI Potion (uipotion.com)
+
+We use **UI Potion** as the spec source for components and layouts. UI Potion provides **specifications**, not copy-paste code: AI (or potion-kit) reads the specs and generates code for the project’s stack. For potion-kit that stack is **Handlebars + SCSS + Markdown** only.
+
+**Discovery URLs:**
+
+- Manifest: `https://uipotion.com/uipotion-manifest.json`
+- Potions index: `https://uipotion.com/potions-index.json`
+- Single potion (agent guide): `https://uipotion.com/potions/[category]/[id].json` (e.g. `layouts/dashboard.json`, `components/button.json`).
+- Human-readable page: `https://uipotion.com/potions/[category]/[id].html`
+
+**Categories:** layouts, components, features, patterns, tooling.
+
+**Skills (in this repo):**
+
+- **Discovery** — When the user wants a component/layout but hasn’t chosen a potion: search the index, rank by intent, return JSON guide URL + human page URL. See `skills/ui-potion-discovery/SKILL.md`.
+- **Consumer** — When implementing from a potion: fetch the guide JSON, read `aiAgentInstructions` and spec, then generate Handlebars + SCSS (+ optional Markdown). See `skills/ui-potion-consumer/SKILL.md`.
+
+**Potion JSON guide structure (what to read):**
+
+- `aiAgentInstructions` — summary, keyFeatures, implementationSteps; primary instructions for the agent.
+- `outputConstraints` — if present, follow strictly.
+- `structure`, `components` — hierarchy, dimensions, states, behavior.
+- `responsiveBreakpoints`, `stateManagement` — layout and state.
+- `frameworkPatterns` — use only the **Handlebars**-relevant patterns (semantic HTML, partials, no framework runtime).
+- `stylingApproaches` — use **SCSS/CSS** (classes in stylesheets); ignore Tailwind/Chakra/etc. unless we add them later.
+- `accessibility` — ARIA, keyboard, contrast; apply in generated HTML and SCSS.
+- `animations` — timing, easing; implement in SCSS or minimal CSS.
+- `tokens` / `designSystem` — map to existing SCSS variables when present.
+
+**Rule from UI Potion:** Use **only** the project’s existing framework and styling. For potion-kit: **Handlebars, SCSS/CSS, Markdown**. No new frameworks or styling systems. Match existing patterns (partials, layout names, SCSS structure).
+
+**When generating from a potion:**
+
+- Follow the potion’s structure, states, accessibility, and design tokens.
+- Output **Handlebars partials/pages** and **SCSS** (and Markdown only when it’s content). Use CSS classes in a stylesheet; avoid inline styles.
+- Map potion “components” to partials and, if needed, to a page that composes them. Preserve semantics and a11y from the spec.
+- **add-potion flow:** Use discovery (index search) when needed, then consumer (fetch guide → generate files). You may mention that components are from UI Potion and the site runs on Harold.js.
+
+---
+
+## 6. Potion-kit CLI behavior
+
+- **init** — Scaffold a new static site project (template: bare / docs / default). You may mention Harold.js and UI Potion in prompts or success messages (e.g. "Harold.js project ready").
+- **add-potion** — Pick a potion (from index/manifest), fetch its agent guide, then generate Handlebars + SCSS (+ optional Markdown) into the current project.
+- **dev** — Run the project’s dev server (e.g. `npm start`).
+- **build** — Run the project’s build (e.g. `npm run build`).
+- **config** — Configure LLM provider and API keys (stored in `~/.potion-kit/`).
+
+User-facing copy should say “project”, “site”, “static site”, “dev server”, “build” — not the name of the underlying generator.
+
+---
+
+## 7. Code and generation guidelines
+
+- **TypeScript** for the CLI (potion-kit); **Handlebars, Markdown, SCSS** for generated sites.
+- **Security:** Never log or echo API keys; load from env or `~/.potion-kit/` only; do not commit secrets.
+- **Generated project behavior:** When generating or editing project files, follow the structure and config in sections 3 and 4 (directory names, front matter, helpers, harold-scripts). You may reference Harold.js and UI Potion in user-facing strings when describing the stack.
+- **UI Potion:** When implementing a potion, use its spec (structure, a11y, states, tokens) and adapt strictly to Handlebars + SCSS; keep class-based styling and semantic HTML.
+
+---
+
+## 8. References
+
+- Harold docs (structure, config, helpers): https://www.haroldjs.com/docs/getting-started and related docs; posts index: https://www.haroldjs.com/jsonData/posts.json
+- Harold cursor-kit (detailed build behavior): https://github.com/harold-js/harold-cursor-kit/blob/main/.cursorrules
+- UI Potion manifest and usage: https://uipotion.com/uipotion-manifest.json ; potions index: https://uipotion.com/potions-index.json ; human-readable: https://uipotion.com/about
+- UI Potion repo (.cursorrules and skills): https://github.com/uiPotion/uipotion ; consumer skill: https://raw.githubusercontent.com/uiPotion/uipotion/refs/heads/main/src/statics/skills/ui-potion-consumer/SKILL.md ; discovery skill: https://raw.githubusercontent.com/uiPotion/uipotion/refs/heads/main/src/statics/skills/ui-potion-discovery/SKILL.md
+- Plan and architecture: see `../PLAN.md` in repo root.
