@@ -2,7 +2,7 @@
  * Potion-kit tools for the Vercel AI SDK. The model can only get component/layout
  * specs or project info by calling these. See https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling
  */
-import { mkdir, writeFile, realpath } from "node:fs/promises";
+import { mkdir, writeFile, readFile, realpath } from "node:fs/promises";
 import { resolve, relative } from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
@@ -61,7 +61,7 @@ async function isPathAllowed(
     if (canonicalParent) {
       const canonicalAbsolute = resolve(canonicalParent, normalized.split("/").pop()!);
       const relCanonical = relative(canonicalRoot, canonicalAbsolute);
-      if (relCanonical.startsWith("..") || relCanonical.includes("..")) {
+      if (relCanonical.startsWith("..")) {
         return { ok: false, error: "Path is outside the project directory" };
       }
     }
@@ -69,6 +69,48 @@ async function isPathAllowed(
     // realpath can throw if path doesn't exist yet; resolve check above is enough
   }
   return { ok: true, absolute };
+}
+
+/**
+ * Ensure the path (or an existing ancestor) resolves inside the project root.
+ * Follows symlinks so we never read or write outside the working directory.
+ * When the path or its parents don't exist yet (e.g. scaffolding), we walk up
+ * until we find an existing directory and check that it is inside the project.
+ */
+async function ensureInsideProjectRoot(
+  projectRoot: string,
+  absolutePath: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const canonicalRoot = await realpath(projectRoot);
+  const checkInside = (canonicalPath: string) =>
+    !relative(canonicalRoot, canonicalPath).startsWith("..");
+
+  const canonicalPath = await realpath(absolutePath).catch((e: NodeJS.ErrnoException) => {
+    if (e?.code === "ENOENT") return null;
+    throw e;
+  });
+  if (canonicalPath !== null) {
+    return checkInside(canonicalPath)
+      ? { ok: true }
+      : { ok: false, error: "Path is outside the project directory" };
+  }
+
+  let dir = resolve(absolutePath, "..");
+  while (relative(projectRoot, dir).startsWith("..") === false) {
+    const canonicalDir = await realpath(dir).catch((e: NodeJS.ErrnoException) => {
+      if (e?.code === "ENOENT") return null;
+      throw e;
+    });
+    if (canonicalDir !== null) {
+      return checkInside(canonicalDir)
+        ? { ok: true }
+        : { ok: false, error: "Path is outside the project directory" };
+    }
+    const parent = resolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return { ok: false, error: "Path is outside the project directory" };
 }
 
 /**
@@ -139,13 +181,46 @@ export function createPotionKitTools() {
 
     get_harold_project_info: tool({
       description:
-        "Get info about the current static site project (if any): Harold config (.haroldrc.json or package.json), existing partials, pages, styles, blog layouts. Call this when the user is iterating on an existing project so you can match existing patterns and avoid naming conflicts. If the dir is empty or not a Harold project, the response will say so; then scaffold with the standard layout (one main.scss, no @import/@use).",
+        "Get info about the current static site project (if any): Harold config (.haroldrc.json or package.json), existing partials, pages, styles, blog layouts. Returns only structure (file names and config), NOT file contents. When the user is iterating or asking for a fix, call read_project_file for the relevant file(s) to get current content before editing. If the dir is empty or not a Harold project, the response will say so; then scaffold with the standard layout (one main.scss, no @import/@use).",
       parameters: z.object({}),
       execute: async () => {
         try {
           return getHaroldProjectInfo(process.cwd());
         } catch (e) {
           return { found: false, message: e instanceof Error ? e.message : String(e) };
+        }
+      },
+    }),
+
+    read_project_file: tool({
+      description:
+        "Read the current contents of a file in the user's project. Path must be relative to project root (e.g. src/partials/navbar.hbs, src/pages/index.hbs, src/styles/main.scss). Use this whenever the user asks to fix, change, or update existing code: read the file first, then make minimal edits based on the exact content returned. Do not regenerate files from scratch without reading them.",
+      parameters: z.object({
+        path: z
+          .string()
+          .describe(
+            "Relative path from project root, e.g. src/partials/head.hbs or src/styles/main.scss"
+          ),
+      }),
+      execute: async ({ path: relativePath }: { path: string }) => {
+        const projectRoot = resolve(process.cwd());
+        const allowed = await isPathAllowed(projectRoot, relativePath);
+        if (!allowed.ok) {
+          return { ok: false, error: allowed.error, content: null };
+        }
+        const inside = await ensureInsideProjectRoot(projectRoot, allowed.absolute);
+        if (!inside.ok) {
+          return { ok: false, error: inside.error, content: null };
+        }
+        try {
+          const content = await readFile(allowed.absolute, "utf8");
+          return { ok: true, path: relativePath, content };
+        } catch (e) {
+          const err = e instanceof Error ? e.message : String(e);
+          if (err.includes("ENOENT")) {
+            return { ok: false, error: "File not found", content: null };
+          }
+          return { ok: false, error: err, content: null };
         }
       },
     }),
@@ -183,6 +258,10 @@ export function createPotionKitTools() {
         const allowed = await isPathAllowed(projectRoot, relativePath);
         if (!allowed.ok) {
           return { ok: false, error: allowed.error };
+        }
+        const inside = await ensureInsideProjectRoot(projectRoot, allowed.absolute);
+        if (!inside.ok) {
+          return { ok: false, error: inside.error };
         }
         try {
           const dir = resolve(allowed.absolute, "..");

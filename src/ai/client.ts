@@ -23,12 +23,12 @@ export interface CreateChatOptions {
 }
 
 const REQUEST_TIMEOUT_MS = 300_000; // 5 minutes (multi-step tool use can be slow)
-const MAX_STEPS = 8; // enough for tool rounds (search, get spec, write files) plus a final text reply
+const MAX_STEPS = 16; // tool rounds (search, spec, read, write) plus a final text reply; scaffold can need many writes
 
 /**
  * Create a chat that uses the AI SDK with the configured provider.
  * send(messages) uses the first message as system if role is 'system', rest as messages.
- * Tools (search_potions, get_potion_spec, get_harold_project_info, fetch_doc_page, write_project_file) are always available; multi-step so the model can call tools then reply.
+ * Tools (search_potions, get_potion_spec, get_harold_project_info, read_project_file, fetch_doc_page, write_project_file) are always available; multi-step so the model can call tools then reply.
  */
 export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
   const { onProgress, progressMessageBuilder, onError } = options;
@@ -91,12 +91,27 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
           }
           return combined;
         }
-        // No text in any step: log why and give a helpful fallback when hit length limit
-        const errMsg = `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${result.steps.length}). Try asking again.`;
-        if (onError) onError(errMsg);
-        else console.error(errMsg);
+        // No text in any step: step limit or length; give a helpful fallback so the user isn't left with nothing
+        const stepsUsed = result.steps.length;
+        const hitStepLimit = result.finishReason === "tool-calls" || stepsUsed >= MAX_STEPS;
+        if (onError) {
+          onError(
+            hitStepLimit
+              ? `Step limit reached (${stepsUsed} steps). The assistant may have created or updated files but didn't get to send a final message. Check your project and ask again if you want a summary or more changes.`
+              : `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${stepsUsed}). Try asking again.`
+          );
+        } else {
+          console.error(
+            hitStepLimit
+              ? `Step limit reached (${stepsUsed} steps). Check your project for changes.`
+              : `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${stepsUsed}). Try asking again.`
+          );
+        }
         if (result.finishReason === "length") {
           return "The reply was cut off by the output length limit, but any file creation in earlier steps should have completed. Check your project for new files (e.g. under src/). You can run the build and ask for follow-up changes.";
+        }
+        if (hitStepLimit) {
+          return "I hit the step limit while working on your project, so I didn't get to send a final message. Check your project for any files I created or updated (e.g. under src/). Run `npm run build` or `npm start` to try the site, and ask again if you want a summary or more changes.";
         }
         return "";
       } catch (err) {
