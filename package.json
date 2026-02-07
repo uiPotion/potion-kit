@@ -1,7 +1,7 @@
 {
   "name": "potion-kit",
   "version": "0.0.1",
-  "description": "CLI to build HaroldJS + UIPotion websites (Handlebars, Markdown, SCSS)",
+  "description": "CLI to build HaroldJS + UIPotion websites",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -11,7 +11,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
-    "prepare": "husky",
+    "prepare": "node .husky/install.mjs",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
@@ -23,11 +24,23 @@
     "harold",
     "uipotion",
     "static-site",
-    "cli"
+    "cli",
+    "ui components"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uiPotion/potion-kit.git"
+  },
+  "homepage": "https://github.com/uiPotion/potion-kit#readme",
+  "bugs": {
+    "url": "https://github.com/uiPotion/potion-kit/issues"
+  },
   "files": [
-    "dist"
+    "dist",
+    ".env.example",
+    "config.example.json",
+    ".husky/install.mjs"
   ],
   "lint-staged": {
     "*.ts": [

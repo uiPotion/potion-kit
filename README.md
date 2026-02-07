@@ -1,91 +1,165 @@
-# potion-kit
+# Potion Kit
 
 CLI to build websites with **HaroldJS** (haroldjs.com) and **UIPotion** (uipotion.com): static sites with Handlebars, Markdown, and SCSS only. Chat with the AI to design and build your site; the model uses the UIPotion catalog and HaroldJS conventions and can only suggest components from real specs.
 
+> **Note:** potion-kit is actively developed — we’re improving it over time. For the best experience we recommend using the **newest OpenAI or Anthropic models**; they handle the tool-heavy workflow and long conversations best. Keep in mind that extensive use consumes API tokens and costs depend on your provider’s pricing; we are not responsible for those charges. We hope you enjoy building with it.
+
 ## Commands
 
-- **`potion-kit chat`** or **`potion-kit`** (default) — Interactive chat. See [Usage](#usage) below.
+- **`potion-kit chat`** or **`potion-kit`** (default) — Interactive chat.
 - **`potion-kit chat "message"`** — Send one message and exit (one-shot).
 - **`potion-kit clear`** — Clear chat history for this project (next chat starts a new conversation).
 
-## Setup
+---
+
+## Usage (from npm)
+
+Use potion-kit as an installed CLI: run it from any directory where you have a `.env` with your LLM API key. No need to clone this repo.
+
+### Install
+
+**Option A — npx (no install):**
 
 ```bash
-cd potion-kit
-npm install
-npm run build
-node dist/index.js --help
+npx potion-kit chat
 ```
 
-To use chat from another directory (e.g. your project or the playground), run from that directory and put a `.env` there (or set env vars). Copy `potion-kit/.env.example` to your project as `.env` and set your API key.
-
-## Usage
-
-Chat is the main way to interact with the AI. The model knows HaroldJS structure and the UIPotion catalog; it uses tools to fetch real component specs and, when run from a project dir, can see your existing partials/pages/styles. If something is missing from context, it can fetch doc pages from haroldjs.com or uipotion.com only (fallback). You can build the site iteratively over multiple turns.
-
-### Interactive mode (recommended)
-
-Run with no arguments to enter an interactive session:
+**Option B — global install:**
 
 ```bash
+npm install -g potion-kit
 potion-kit chat
-# or
-potion-kit
 ```
 
-You’ll see a `You:` prompt. Type your message, press Enter; the model replies, then you get `You:` again. The process stays running so you don’t re-run the CLI every time.
+### Run in your project (or empty directory)
 
-- **Quit:** type `exit`, `quit`, or `q`, or press **Ctrl+C**. Your conversation is saved before exit.
-- **New conversation:** run `potion-kit clear`, then run `potion-kit chat` (or `potion-kit` with a message).
+1. **Go to the directory** where you want to work (new site or existing project). It can be an empty folder.
 
-### One-shot
+   ```bash
+   mkdir my-site && cd my-site
+   ```
 
-To send a single message and exit:
+2. **Create a `.env` file** in that directory with your LLM provider and API key. Minimal contents:
+
+   ```env
+   POTION_KIT_PROVIDER=openai
+   OPENAI_API_KEY=sk-your-key-here
+   ```
+
+   For Anthropic use `POTION_KIT_PROVIDER=anthropic` and `ANTHROPIC_API_KEY=...`. See [.env variables](#env-variables) for all options and [.env and security](#env-and-security).
+
+3. **Run potion-kit** from that same directory:
+
+   ```bash
+   npx potion-kit chat
+   # or, if installed globally:
+   potion-kit chat
+   ```
+
+   The tool reads `.env` from the **current working directory**, so always run `potion-kit` from the directory that contains your `.env` (and where you want the AI to read/write files).
+
+### Usage examples
+
+**Interactive chat (recommended):**
 
 ```bash
-potion-kit chat "I want a blog with a header and footer"
+cd my-project
+npx potion-kit chat
+# or: potion-kit chat
 ```
 
-The reply is printed and the process exits. If you run chat again (interactive or one-shot) in the same directory, the model sees the previous conversation (see [Chat history](#chat-history)).
+Type your message at the `You:` prompt, press Enter; the model replies. Type `exit`, `quit`, or `q` (or Ctrl+C) to quit. Your conversation is saved for the next run.
 
-### Building the site
+**One-shot (single message then exit):**
 
-1. Run `potion-kit chat` from your project directory (where your `.env` lives).
-2. Describe what you want (e.g. “I want a simple blog”, “Use the navbar potion for the header”).
-3. The model uses the catalog and tools to suggest Handlebars partials, SCSS, and Markdown. Continue the conversation to add pages, layouts, or refine.
-4. Start over anytime with `potion-kit clear`.
+```bash
+npx potion-kit chat "I want a blog with a header and footer"
+npx potion-kit chat "Add the navbar potion to the layout"
+```
 
-## Config
+**Start a new conversation** (clear history for this directory):
 
-LLM config is loaded in this order (later overrides earlier):
+```bash
+npx potion-kit clear
+npx potion-kit chat "Let's build a docs site"
+```
 
-1. **`.env` in the current working directory** (where you run potion-kit). Copy `.env.example` to `.env` and set your keys.
-2. **Environment variables** (e.g. `OPENAI_API_KEY`).
-3. **`~/.potion-kit/config.json`** — provider and model only; **never put API keys there**. See `config.example.json` in this package.
+### Config
 
-### .env variables
+Config is loaded in this order (later overrides earlier):
+
+1. **`.env` in the current working directory** (where you run potion-kit).
+2. **Environment variables** (e.g. `OPENAI_API_KEY`, `POTION_KIT_PROVIDER`).
+3. **`~/.potion-kit/config.json`** — provider and model only; **do not put API keys there**.
+
+#### .env variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `POTION_KIT_PROVIDER` | yes | `openai` or `anthropic` |
 | `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | one required | API key for the chosen provider |
-| `POTION_KIT_MODEL` | no | Chat model id (defaults: `gpt-4o-mini` / `claude-sonnet-4-5`). Must be a **chat** model (e.g. gpt-4o, gpt-3.5-turbo), not a completion-only model. |
+| `POTION_KIT_MODEL` | no | Chat model id (defaults: `gpt-5.2` / `claude-sonnet-4-5`). Must be a **chat** model. |
 | `POTION_KIT_API_KEY` | no | Fallback key if provider-specific key is not set |
-| `POTION_KIT_BASE_URL` | no | Custom base URL (e.g. OpenAI-compatible proxy, LiteLLM, local model) |
+| `POTION_KIT_BASE_URL` | no | Custom base URL (e.g. OpenAI proxy, LiteLLM) |
 
-Provider setup: [ai-sdk.dev](https://ai-sdk.dev).
+**Minimal `.env`:**
 
-Never commit `.env`, `~/.potion-kit/`, or paste API keys in logs.
+```env
+POTION_KIT_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key-here
+```
+
+**With optional model:**
+
+```env
+POTION_KIT_PROVIDER=openai
+POTION_KIT_MODEL=gpt-5.2
+OPENAI_API_KEY=sk-your-key-here
+```
+
+#### .env and security
+
+- **potion-kit never sends `.env` or API keys to the model.** Keys are read only by the CLI and used for authentication with the LLM provider (OpenAI/Anthropic). They are not included in the system prompt, chat history, or any message content sent to the model. The only way a key could appear in the conversation is if you paste it yourself in a chat message — so don’t.
+- **Never commit `.env`.** It contains secrets. Add `.env` to your `.gitignore`. If the AI scaffolds a project for you, ensure `.env` is in that project’s `.gitignore` too.
+- **Never put API keys in `~/.potion-kit/config.json`.** That file is for provider and model only. Use `.env` or environment variables for keys.
+- **Never paste API keys in logs, issues, or chat.** If you paste a key into a chat message, it becomes part of the conversation and history.
+- **Where to put `.env`:** In the directory from which you run `potion-kit` (usually your project root). One `.env` per project.
 
 ### Chat history
 
-Conversation is stored **per project** in `.potion-kit/chat-history.json` (in the directory where you run `potion-kit chat`). That gives the model full context on the next run. This directory is typically gitignored so chat history is not committed.
+Conversation is stored in **`.potion-kit/chat-history.json`** in the directory where you run `potion-kit chat`. The model uses it for context on the next run. Add `.potion-kit/` to `.gitignore` if you don’t want to commit chat history. Use `potion-kit clear` to reset history for that project.
 
-- **Interactive mode:** history is written after each turn and when you exit.
-- **One-shot:** history is updated after each run.
-- **Clear:** `potion-kit clear` resets history for that project.
+### Legal
 
-## Development
+potion-kit uses [UIPotion](https://uipotion.com) specifications and catalog. **By using potion-kit you are using UIPotion’s service and agree to the [UIPotion legal disclaimer and privacy policy](https://uipotion.com/legal).** That page covers disclaimers on AI-generated code, liability, and user responsibility. Please read it before use.
 
-- **Lint:** `npm run lint` — ESLint on `src/`. `npm run lint:fix` to auto-fix.
-- **Format:** `npm run format` — Prettier on `src/**/*.ts`. `npm run format:check` to only check (e.g. CI).
+---
+
+## Development (potion-kit repo)
+
+For contributing to potion-kit or running from source.
+
+### Setup
+
+```bash
+git clone <repo>
+cd potion-kit
+npm install
+npm run build
+```
+
+### Run locally
+
+```bash
+node dist/index.js --help
+node dist/index.js chat
+```
+
+Put a `.env` in the repo (or in a test directory) and run from there. Copy `.env.example` to `.env` and set your API key.
+
+### Scripts
+
+- **`npm run build`** — Compile TypeScript to `dist/`.
+- **`npm run lint`** — ESLint on `src/`. `npm run lint:fix` to auto-fix.
+- **`npm run format`** — Prettier on `src/**/*.ts`. `npm run format:check` to only check.
+- **`npm run typecheck`** — `tsc --noEmit`.

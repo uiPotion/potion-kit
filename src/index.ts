@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { runChat } from "./commands/chat.js";
 import { runClear } from "./commands/clear.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as {
+  version?: string;
+};
 
 const program = new Command();
 
 program
   .name("potion-kit")
   .description("CLI to build static sites with Handlebars, Markdown, and SCSS")
-  .version("0.0.1");
+  .version(pkg.version ?? "0.0.0");
 
 program
   .command("chat [message...]", { isDefault: true })

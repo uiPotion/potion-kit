@@ -27,7 +27,7 @@ function formatChatError(err: unknown): string {
   if (/not a chat model|v1\/chat\/completions|v1\/completions/i.test(msg)) {
     return (
       msg +
-      "\n\nUse a chat model (e.g. gpt-4o-mini, gpt-4o), not a completion-only model. Set POTION_KIT_MODEL in .env or ~/.potion-kit/config.json."
+      "\n\nUse a chat model (e.g. gpt-5.2, gpt-4o), not a completion-only model. Set POTION_KIT_MODEL in .env or ~/.potion-kit/config.json."
     );
   }
   return msg;

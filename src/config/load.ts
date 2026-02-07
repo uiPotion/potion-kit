@@ -22,7 +22,7 @@ const PROVIDER_ENV: Record<Provider, string> = {
 };
 
 const DEFAULT_MODELS: Record<Provider, string> = {
-  openai: "gpt-4o-mini",
+  openai: "gpt-5.2",
   anthropic: "claude-sonnet-4-5",
 };
 
