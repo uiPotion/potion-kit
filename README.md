@@ -163,4 +163,4 @@ Put a `.env` in the repo (or in a test directory) and run from there. Copy `.env
 - **`npm run lint`** — ESLint on `src/`. `npm run lint:fix` to auto-fix.
 - **`npm run format`** — Prettier on `src/**/*.ts`. `npm run format:check` to only check.
 - **`npm run typecheck`** — `tsc --noEmit`.
-- **`npm run test`** — Run tests (Node built-in test runner). See [TESTING.md](TESTING.md) for what’s covered and what’s mocked.
+- **`npm run test`** — Run tests (Node built-in test runner; tests live in `test/`).
