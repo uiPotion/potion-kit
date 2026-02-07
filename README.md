@@ -85,6 +85,7 @@ Conversation is stored **per project** in `.potion-kit/chat-history.json` (in th
 - **One-shot:** history is updated after each run.
 - **Clear:** `potion-kit clear` resets history for that project.
 
-## More
+## Development
 
-See the root [PLAN.md](../PLAN.md) for full design and phases.
+- **Lint:** `npm run lint` — ESLint on `src/`. `npm run lint:fix` to auto-fix.
+- **Format:** `npm run format` — Prettier on `src/**/*.ts`. `npm run format:check` to only check (e.g. CI).

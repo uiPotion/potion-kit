@@ -3,16 +3,15 @@
  * Injected into the system prompt so the model has real knowledge
  */
 
-import { npmPackageLatestUrl } from '../endpoints.js';
-import { getJson } from '../remote.js';
+import { npmPackageLatestUrl } from "../endpoints.js";
+import { getJson } from "../remote.js";
 
 /** Fetch the latest harold-scripts version from npm; fallback to "latest" on error. */
 export async function getHaroldScriptsLatestVersion(): Promise<string> {
-  const data = await getJson<{ version?: string }>(
-    npmPackageLatestUrl('harold-scripts'),
-    { timeoutMs: 5000 }
-  );
-  if (!data || typeof data.version !== 'string') return 'latest';
+  const data = await getJson<{ version?: string }>(npmPackageLatestUrl("harold-scripts"), {
+    timeoutMs: 5000,
+  });
+  if (!data || typeof data.version !== "string") return "latest";
   return `^${data.version}`;
 }
 

@@ -2,14 +2,14 @@
  * Chat client using the Vercel AI SDK (https://ai-sdk.dev).
  * Config drives which provider we use; tools are built-in (search_potions, get_potion_spec, get_harold_project_info, fetch_doc_page, write_project_file).
  */
-import { generateText } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import type { LlmConfig } from '../config/index.js';
-import { createPotionKitTools } from './tools.js';
+import { generateText } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import type { LlmConfig } from "../config/index.js";
+import { createPotionKitTools } from "./tools.js";
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: "system" | "user" | "assistant";
   content: string;
 }
 
@@ -29,7 +29,7 @@ const MAX_STEPS = 8; // enough for tool rounds (search, get spec, write files) p
 export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
   const { onProgress } = options;
   const model =
-    config.provider === 'openai'
+    config.provider === "openai"
       ? createOpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl })(config.model)
       : createAnthropic({ apiKey: config.apiKey })(config.model);
 
@@ -39,9 +39,9 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
   return {
     async send(messages: ChatMessage[]): Promise<string> {
       stepCount = 0;
-      const system = messages.find((m) => m.role === 'system')?.content;
-      const conversation = messages.filter((m) => m.role !== 'system') as Array<{
-        role: 'user' | 'assistant';
+      const system = messages.find((m) => m.role === "system")?.content;
+      const conversation = messages.filter((m) => m.role !== "system") as Array<{
+        role: "user" | "assistant";
         content: string;
       }>;
 
@@ -61,21 +61,24 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
             stepCount++;
             if (onProgress) {
               const toolNames = stepResult.toolCalls?.length
-                ? ` (${(stepResult.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName).join(', ')})`
-                : '';
+                ? ` (${(stepResult.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName).join(", ")})`
+                : "";
               onProgress(`Step ${stepCount}/${MAX_STEPS}${toolNames}…`);
             }
           },
         });
-        const text = result.text?.trim() ?? '';
+        const text = result.text?.trim() ?? "";
         if (text) return text;
         const fromSteps = result.steps
           .map((s) => (s as { text?: string }).text?.trim())
           .filter(Boolean) as string[];
         if (fromSteps.length) {
-          const combined = fromSteps.join('\n\n');
-          if (result.finishReason === 'length') {
-            return combined + '\n\n[Reply was cut off by length limit; files may still have been created.]';
+          const combined = fromSteps.join("\n\n");
+          if (result.finishReason === "length") {
+            return (
+              combined +
+              "\n\n[Reply was cut off by length limit; files may still have been created.]"
+            );
           }
           return combined;
         }
@@ -83,12 +86,12 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
         console.error(
           `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${result.steps.length}). Try asking again.`
         );
-        if (result.finishReason === 'length') {
-          return 'The reply was cut off by the output length limit, but any file creation in earlier steps should have completed. Check your project for new files (e.g. under src/). You can run the build and ask for follow-up changes.';
+        if (result.finishReason === "length") {
+          return "The reply was cut off by the output length limit, but any file creation in earlier steps should have completed. Check your project for new files (e.g. under src/). You can run the build and ask for follow-up changes.";
         }
-        return '';
+        return "";
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
+        if (err instanceof Error && err.name === "AbortError") {
           throw new Error(
             `Request timed out after ${REQUEST_TIMEOUT_MS / 60_000} minutes. Try again or use a shorter message.`
           );

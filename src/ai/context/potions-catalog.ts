@@ -3,8 +3,8 @@
  * what potions exist and when to reach for them. Injected into the system prompt.
  */
 
-import { potionsIndexUrl } from '../endpoints.js';
-import { getJson } from '../remote.js';
+import { potionsIndexUrl } from "../endpoints.js";
+import { getJson } from "../remote.js";
 
 export interface PotionIndexEntry {
   id: string;
@@ -29,7 +29,7 @@ export async function fetchPotionsIndex(): Promise<PotionsIndex | null> {
   return getJson<PotionsIndex>(potionsIndexUrl);
 }
 
-const CATEGORY_ORDER = ['layouts', 'components', 'features', 'patterns', 'tooling'] as const;
+const CATEGORY_ORDER = ["layouts", "components", "features", "patterns", "tooling"] as const;
 
 /**
  * Build a text catalog from the potions index for injection into the system prompt.
@@ -38,21 +38,21 @@ const CATEGORY_ORDER = ['layouts', 'components', 'features', 'patterns', 'toolin
 export function formatPotionsCatalog(index: PotionsIndex): string {
   const potions = index.potions ?? [];
   if (potions.length === 0) {
-    return 'No UI Potions catalog available. Use search_potions and get_potion_spec tools to discover guides.';
+    return "No UI Potions catalog available. Use search_potions and get_potion_spec tools to discover guides.";
   }
 
   const byCategory = new Map<string, PotionIndexEntry[]>();
   for (const p of potions) {
-    const cat = (p.category ?? 'other').toLowerCase();
+    const cat = (p.category ?? "other").toLowerCase();
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(p);
   }
 
   const lines: string[] = [
-    '## UI POTIONS (component and layout guides)',
-    '',
-    'You have access to these UI Potion guides. Use them when the user asks for a layout, component, feature, or pattern. When you need the full spec to generate code, call get_potion_spec(category, id) with the category and id below.',
-    '',
+    "## UI POTIONS (component and layout guides)",
+    "",
+    "You have access to these UI Potion guides. Use them when the user asks for a layout, component, feature, or pattern. When you need the full spec to generate code, call get_potion_spec(category, id) with the category and id below.",
+    "",
   ];
 
   for (const cat of CATEGORY_ORDER) {
@@ -60,23 +60,27 @@ export function formatPotionsCatalog(index: PotionsIndex): string {
     if (!list?.length) continue;
     lines.push(`### ${cat}`);
     for (const p of list) {
-      const excerpt = p.excerpt ? ` — ${p.excerpt.slice(0, 80)}${p.excerpt.length > 80 ? '...' : ''}` : '';
+      const excerpt = p.excerpt
+        ? ` — ${p.excerpt.slice(0, 80)}${p.excerpt.length > 80 ? "..." : ""}`
+        : "";
       lines.push(`- **${p.id}**: ${p.name}${excerpt}`);
     }
-    lines.push('');
+    lines.push("");
   }
 
-  const other = byCategory.get('other');
+  const other = byCategory.get("other");
   if (other?.length) {
-    lines.push('### other');
+    lines.push("### other");
     for (const p of other) {
       lines.push(`- **${p.id}**: ${p.name}`);
     }
-    lines.push('');
+    lines.push("");
   }
 
-  lines.push('When to reach for them: use **layouts** for full-page structure (dashboard, landing, docs); **components** for reusable UI (buttons, nav, cards, forms); **features** for complete flows (pricing, auth); **patterns** for interaction/design patterns; **tooling** for dev tooling. Always call get_potion_spec(category, id) to fetch the full JSON guide before generating code from a potion.');
-  return lines.join('\n');
+  lines.push(
+    "When to reach for them: use **layouts** for full-page structure (dashboard, landing, docs); **components** for reusable UI (buttons, nav, cards, forms); **features** for complete flows (pricing, auth); **patterns** for interaction/design patterns; **tooling** for dev tooling. Always call get_potion_spec(category, id) to fetch the full JSON guide before generating code from a potion."
+  );
+  return lines.join("\n");
 }
 
 /**
@@ -86,7 +90,7 @@ export function formatPotionsCatalog(index: PotionsIndex): string {
 export async function getPotionsCatalogText(): Promise<string> {
   const index = await fetchPotionsIndex();
   if (!index) {
-    return 'UI Potions catalog could not be loaded. Use search_potions and get_potion_spec tools to discover and fetch guides.';
+    return "UI Potions catalog could not be loaded. Use search_potions and get_potion_spec tools to discover and fetch guides.";
   }
   return formatPotionsCatalog(index);
 }

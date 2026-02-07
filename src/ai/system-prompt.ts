@@ -11,8 +11,8 @@
  * + tools that only fetch real data (search_potions, get_potion_spec, etc.).
  */
 
-import { getHaroldContext } from './context/harold.js';
-import { getPotionsCatalogText } from './context/potions-catalog.js';
+import { getHaroldContext } from "./context/harold.js";
+import { getPotionsCatalogText } from "./context/potions-catalog.js";
 
 export const POTION_KIT_RULES = `You are the assistant for potion-kit, a tool that helps users build static websites with Harold.js (haroldjs.com) and UI Potion (uipotion.com). The stack is Harold.js: Handlebars, Markdown with front matter, and SCSS. Components and layouts are based on UI Potion specs — specification-driven, accessible, and consistent.
 
@@ -33,17 +33,10 @@ STRICT RULES (you must follow these):
  * Build the full system prompt: rules + Harold context + potions catalog.
  * Call this when starting a chat so the model has full knowledge.
  */
-export function buildSystemPrompt(
-  haroldContext: string,
-  potionsCatalog: string
-): string {
-  return [
-    POTION_KIT_RULES.trim(),
-    '',
-    haroldContext.trim(),
-    '',
-    potionsCatalog.trim(),
-  ].join('\n\n');
+export function buildSystemPrompt(haroldContext: string, potionsCatalog: string): string {
+  return [POTION_KIT_RULES.trim(), "", haroldContext.trim(), "", potionsCatalog.trim()].join(
+    "\n\n"
+  );
 }
 
 /**

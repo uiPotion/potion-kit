@@ -4,7 +4,7 @@
  */
 
 const DEFAULT_TIMEOUT_MS = 15_000;
-const USER_AGENT = 'potion-kit/1.0';
+const USER_AGENT = "potion-kit/1.0";
 
 export interface RemoteGetOptions {
   /** Request timeout in ms. Default 15000. */
@@ -19,10 +19,7 @@ export interface RemoteGetOptions {
  * GET a URL with optional timeout and headers. Returns the Response;
  * callers are responsible for res.ok, res.json(), res.text(), etc.
  */
-export async function get(
-  url: string,
-  options: RemoteGetOptions = {}
-): Promise<Response> {
+export async function get(url: string, options: RemoteGetOptions = {}): Promise<Response> {
   const {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     headers: extraHeaders = {},
@@ -30,8 +27,8 @@ export async function get(
   } = options;
 
   const headers = new Headers(extraHeaders);
-  if (!noUserAgent && !headers.has('User-Agent')) {
-    headers.set('User-Agent', USER_AGENT);
+  if (!noUserAgent && !headers.has("User-Agent")) {
+    headers.set("User-Agent", USER_AGENT);
   }
 
   const controller = new AbortController();
@@ -68,10 +65,7 @@ export async function getJson<T = unknown>(
 /**
  * GET a URL and return text. Returns null on error.
  */
-export async function getText(
-  url: string,
-  options: RemoteGetOptions = {}
-): Promise<string | null> {
+export async function getText(url: string, options: RemoteGetOptions = {}): Promise<string | null> {
   try {
     const res = await get(url, options);
     if (!res.ok) return null;

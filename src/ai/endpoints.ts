@@ -4,17 +4,17 @@
  */
 
 /** npm registry base (no trailing slash). */
-export const NPM_REGISTRY_BASE = 'https://registry.npmjs.org';
+export const NPM_REGISTRY_BASE = "https://registry.npmjs.org";
 
 /** UI Potion site base (no trailing slash). */
-export const UIPOTION_BASE = 'https://uipotion.com';
+export const UIPOTION_BASE = "https://uipotion.com";
 
 /** Harold.js doc site hostnames (for fetch_doc_page allowlist). */
 export const DOC_ALLOWED_HOSTS = new Set([
-  'haroldjs.com',
-  'www.haroldjs.com',
-  'uipotion.com',
-  'www.uipotion.com',
+  "haroldjs.com",
+  "www.haroldjs.com",
+  "uipotion.com",
+  "www.uipotion.com",
 ]);
 
 /** URL for a package's "latest" version in the npm registry. */

@@ -4,25 +4,44 @@
   "description": "CLI to build Harold + UI Potion websites (Handlebars, Markdown, SCSS)",
   "type": "module",
   "main": "dist/index.js",
-  "bin": { "potion-kit": "dist/index.js" },
+  "bin": {
+    "potion-kit": "dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\""
   },
-  "keywords": ["harold", "uipotion", "static-site", "cli"],
+  "keywords": [
+    "harold",
+    "uipotion",
+    "static-site",
+    "cli"
+  ],
   "license": "MIT",
   "dependencies": {
-    "dotenv": "^16.4.0",
-    "ai": "^4.0.0",
     "@ai-sdk/anthropic": "^1.0.0",
     "@ai-sdk/openai": "^1.0.0",
+    "ai": "^4.0.0",
     "commander": "^12.0.0",
+    "dotenv": "^16.4.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^20.0.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.1",
     "typescript": "^5.0.0",
-    "@types/node": "^20.0.0"
+    "typescript-eslint": "^8.54.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }
