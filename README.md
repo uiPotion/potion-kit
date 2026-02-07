@@ -2,7 +2,7 @@
 
 CLI to build websites with **HaroldJS** (haroldjs.com) and **UIPotion** (uipotion.com): static sites with Handlebars, Markdown, and SCSS only. Chat with the AI to design and build your site; the model uses the UIPotion catalog and HaroldJS conventions and can only suggest components from real specs.
 
-> **Note:** potion-kit is actively developed — we’re improving it over time. For the best experience we recommend using the **newest OpenAI or Anthropic models**; they handle the tool-heavy workflow and long conversations best. Keep in mind that extensive use consumes API tokens and costs depend on your provider’s pricing; we are not responsible for those charges. We hope you enjoy building with it.
+> **Note:** potion-kit is actively developed — we’re improving and optimizing it over time. For the best experience we recommend the **newest OpenAI or Anthropic models**; they handle the outcome quality best. Extensive use consumes API tokens and costs depend on your provider’s pricing. By using the tool you accept it as-is; only you decide whether and how much to use it. We hope you enjoy building with it.
 
 ## Commands
 
