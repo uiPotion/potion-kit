@@ -133,6 +133,10 @@ Conversation is stored in **`.potion-kit/chat-history.json`** in the directory w
 
 potion-kit uses [UIPotion](https://uipotion.com) specifications and catalog. **By using potion-kit you are using UIPotion’s service and agree to the [UIPotion legal disclaimer and privacy policy](https://uipotion.com/legal).** That page covers disclaimers on AI-generated code, liability, and user responsibility. Please read it before use.
 
+**AI providers and your data.** You choose the model and provider (e.g. OpenAI, Anthropic) in config. You are aware what is sent in each request. By using a provider you agree to that provider’s terms of service, acceptable use, and data policies. potion-kit does not control how providers retain, process, or review your prompts and responses.
+
+**Sensitive data and cloud LLM risk.** If your prompts include proprietary code, secrets, customer data, financials, or internal docs, the main risk is that you are voluntarily sending sensitive material to a third party. The precise risk depends on the provider’s retention, access controls, internal review practices, and breach likelihood. This is the general “cloud LLM” risk; consider what you send and which provider you use.
+
 ---
 
 ## Development (potion-kit repo)
