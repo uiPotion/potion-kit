@@ -1,4 +1,1 @@
-{
-  "provider": "openai",
-  "model": "gpt-5.2"
-}
+{"provider":"openai","model":"gpt-5.2","maxHistoryMessages":10}

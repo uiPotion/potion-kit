@@ -47,5 +47,19 @@ describe("config", () => {
         restoreEnv();
       }
     });
+    it("returns config when provider is moonshot and MOONSHOT_API_KEY is set", () => {
+      saveEnv(["POTION_KIT_PROVIDER", "POTION_KIT_MODEL", "MOONSHOT_API_KEY"]);
+      try {
+        process.env.POTION_KIT_PROVIDER = "moonshot";
+        process.env.MOONSHOT_API_KEY = "moonshot-test-key";
+        const config = loadLlmConfig();
+        assert.ok(config !== null);
+        assert.strictEqual(config!.provider, "moonshot");
+        assert.strictEqual(config!.apiKey, "moonshot-test-key");
+        assert.ok(config!.model === "kimi-k2.5" || config!.model);
+      } finally {
+        restoreEnv();
+      }
+    });
   });
 });

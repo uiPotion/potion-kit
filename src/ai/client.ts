@@ -2,9 +2,11 @@
  * Chat client using the Vercel AI SDK (https://ai-sdk.dev).
  * Config drives which provider we use; tools are built-in (search_potions, get_potion_spec, get_harold_project_info, fetch_doc_page, write_project_file).
  */
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createMoonshotAI } from "@ai-sdk/moonshotai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { Agent, fetch as undiciFetch } from "undici";
 import type { LlmConfig } from "../config/index.js";
 import { createPotionKitTools } from "./tools.js";
 
@@ -22,9 +24,24 @@ export interface CreateChatOptions {
   onError?: (message: string) => void;
 }
 
-const REQUEST_TIMEOUT_MS = 300_000; // 5 minutes (multi-step tool use can be slow)
+const REQUEST_TIMEOUT_MS = 900_000; // 15 minutes (multi-step tool use and reasoning models can be slow)
 const MAX_STEPS = 8; // tool rounds per turn; lower to reduce token usage and stay under rate limits
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // wait 1 min before single retry on 429 (limit is per minute)
+
+/** Custom fetch with long headers/body timeouts so slow APIs (e.g. Moonshot reasoning) don't hit undici defaults. */
+const longTimeoutAgent = new Agent({
+  headersTimeout: REQUEST_TIMEOUT_MS,
+  bodyTimeout: REQUEST_TIMEOUT_MS,
+});
+
+function longTimeoutFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const opts = { ...init, dispatcher: longTimeoutAgent };
+  // Casts: undici and DOM fetch types differ; at runtime undici accepts URL, string, or Request
+  return undiciFetch(
+    input as Parameters<typeof undiciFetch>[0],
+    opts as Record<string, unknown>
+  ) as unknown as Promise<Response>;
+}
 
 function isRateLimitError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -35,6 +52,22 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const providerCreators = {
+  openai: createOpenAI,
+  moonshot: createMoonshotAI,
+  anthropic: createAnthropic,
+} as const;
+
+function createModel(config: LlmConfig) {
+  const create = providerCreators[config.provider];
+  const options = {
+    apiKey: config.apiKey,
+    baseURL: config.baseUrl,
+    fetch: longTimeoutFetch,
+  };
+  return create(options)(config.model);
+}
+
 /**
  * Create a chat that uses the AI SDK with the configured provider.
  * send(messages) uses the first message as system if role is 'system', rest as messages.
@@ -42,10 +75,7 @@ function sleep(ms: number): Promise<void> {
  */
 export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
   const { onProgress, progressMessageBuilder, onError } = options;
-  const model =
-    config.provider === "openai"
-      ? createOpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl })(config.model)
-      : createAnthropic({ apiKey: config.apiKey })(config.model);
+  const model = createModel(config);
 
   const tools = createPotionKitTools();
   let stepCount = 0;
@@ -62,14 +92,16 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+      if (onProgress) onProgress("Sending to model…");
+
       const doRequest = async () =>
         generateText({
           model,
           system: system ?? undefined,
           messages: conversation,
           tools,
-          maxSteps: MAX_STEPS,
-          maxTokens: 16_384, // per-step output limit; "length" finish = hit this before replying
+          stopWhen: stepCountIs(MAX_STEPS),
+          maxOutputTokens: 16_384, // per-step output limit; "length" finish = hit this before replying
           maxRetries: 0, // we handle 429 ourselves with one delayed retry
           abortSignal: controller.signal,
           onStepFinish: (stepResult) => {
@@ -82,7 +114,9 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
               const uniqueNames = [...new Set(rawNames)];
               const message = progressMessageBuilder
                 ? progressMessageBuilder(stepCount, MAX_STEPS, uniqueNames)
-                : `Step ${stepCount} (of up to ${MAX_STEPS})${uniqueNames.length ? ` — ${uniqueNames.join(", ")}` : " — Thinking"}…`;
+                : uniqueNames.length > 0
+                  ? `${uniqueNames.join(", ")}. Waiting for model…`
+                  : "Model thinking…";
               onProgress(message);
             }
           },

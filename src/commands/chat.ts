@@ -22,8 +22,8 @@ const DEFAULT_MESSAGE =
 
 const EXIT_COMMANDS = ["exit", "quit", "q"];
 
-/** Max conversation turns sent to the API (user + assistant pairs). Older messages stay on disk but are not sent to reduce token usage. */
-const MAX_HISTORY_MESSAGES = 10;
+/** Default max conversation turns (user + assistant pairs) when not set in config. */
+const DEFAULT_MAX_HISTORY_MESSAGES = 10;
 
 function formatChatError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
@@ -39,6 +39,9 @@ function formatChatError(err: unknown): string {
       "\n\nWait a minute and try again. To use fewer tokens: run `potion-kit clear` to start a fresh conversation, or shorten your message."
     );
   }
+  if (/abort|timeout/i.test(msg)) {
+    return msg + "\n\nRerun your prompt; conversation history is kept, so continuing often works.";
+  }
   return msg;
 }
 
@@ -49,9 +52,10 @@ function printConfigError(): void {
 
   console.error(cli.error("potion-kit: missing LLM configuration.\n"));
   console.error(cli.error("Create a .env file in this directory (or set env vars) with:"));
-  console.error(cli.error("  POTION_KIT_PROVIDER=openai   # or anthropic"));
+  console.error(cli.error("  POTION_KIT_PROVIDER=openai   # or anthropic, moonshot"));
   console.error(cli.error("  OPENAI_API_KEY=sk-...       # if provider is openai"));
-  console.error(cli.error("  ANTHROPIC_API_KEY=...       # if provider is anthropic\n"));
+  console.error(cli.error("  ANTHROPIC_API_KEY=...       # if provider is anthropic"));
+  console.error(cli.error("  MOONSHOT_API_KEY=...       # if provider is moonshot (Kimi)\n"));
   if (!existsSync(envPath)) {
     console.error(cli.error(`No .env found in ${cwd}.`));
     if (existsSync(examplePath)) {
@@ -70,10 +74,10 @@ function printConfigError(): void {
 function buildMessages(
   systemPrompt: string,
   history: HistoryMessage[],
-  userMessage: string
+  userMessage: string,
+  maxHistoryMessages: number
 ): ChatMessage[] {
-  const tail =
-    history.length > MAX_HISTORY_MESSAGES ? history.slice(-MAX_HISTORY_MESSAGES) : history;
+  const tail = history.length > maxHistoryMessages ? history.slice(-maxHistoryMessages) : history;
   const conversation = [
     ...tail.map((m) => ({ role: m.role, content: m.content })),
     { role: "user" as const, content: userMessage },
@@ -100,7 +104,7 @@ export async function runChat(messageParts: string[]): Promise<void> {
   await runInteractive(cwd, config);
 }
 
-const DEFAULT_PROGRESS_TEXT = "Thinking… (may take a minute when using tools)";
+const DEFAULT_PROGRESS_TEXT = "Sending to model…";
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴"];
 const SPIN_INTERVAL_MS = 80;
 const LINE_PAD = 80; // width to clear when redrawing
@@ -157,7 +161,8 @@ async function runOneShot(cwd: string, config: LlmConfig, userMessage: string): 
   });
   const history = readHistory(cwd);
   const message = userMessage || DEFAULT_MESSAGE;
-  const messages = buildMessages(systemPrompt, history, message);
+  const maxHistory = config.maxHistoryMessages ?? DEFAULT_MAX_HISTORY_MESSAGES;
+  const messages = buildMessages(systemPrompt, history, message, maxHistory);
 
   try {
     console.log(cli.user("You: ") + message);
@@ -226,7 +231,8 @@ async function runInteractive(cwd: string, config: LlmConfig): Promise<void> {
       }
 
       try {
-        const messages = buildMessages(systemPrompt, history, input);
+        const maxHistory = config.maxHistoryMessages ?? DEFAULT_MAX_HISTORY_MESSAGES;
+        const messages = buildMessages(systemPrompt, history, input, maxHistory);
         progress.start();
         try {
           const reply = await chat.send(messages);

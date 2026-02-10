@@ -34,7 +34,8 @@ const TOOL_PROGRESS_LABELS: Record<string, string> = {
 };
 
 /**
- * Build progress text: activity only (no step numbers). Tool names mapped to user-friendly labels.
+ * Build progress text: tool labels (if any) and explicit "Waiting for model" when tools just ran.
+ * Makes it clear that long waits after tool names are the model responding, not the tools still running.
  */
 export function buildProgressMessage(
   _step: number,
@@ -44,5 +45,8 @@ export function buildProgressMessage(
   const uniqueLabels = [
     ...new Set(toolNames.map((name) => TOOL_PROGRESS_LABELS[name] ?? name).filter(Boolean)),
   ];
-  return uniqueLabels.length ? uniqueLabels.join(", ") + "…" : "Thinking…";
+  if (uniqueLabels.length > 0) {
+    return `${uniqueLabels.join(", ")}. Waiting for model…`;
+  }
+  return "Model thinking…";
 }

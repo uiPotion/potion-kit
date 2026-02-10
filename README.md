@@ -46,7 +46,7 @@ potion-kit chat
    OPENAI_API_KEY=sk-your-key-here
    ```
 
-   For Anthropic use `POTION_KIT_PROVIDER=anthropic` and `ANTHROPIC_API_KEY=...`. See [.env variables](#env-variables) for all options and [.env and security](#env-and-security).
+   For Anthropic use `POTION_KIT_PROVIDER=anthropic` and `ANTHROPIC_API_KEY=...`. For Kimi (by Moonshot) use `POTION_KIT_PROVIDER=moonshot` and `MOONSHOT_API_KEY=...`. See [.env variables](#env-variables) for all options and [.env and security](#env-and-security).
 
 3. **Run potion-kit** from that same directory:
 
@@ -90,17 +90,18 @@ Config is loaded in this order (later overrides earlier):
 
 1. **`.env` in the current working directory** (where you run potion-kit).
 2. **Environment variables** (e.g. `OPENAI_API_KEY`, `POTION_KIT_PROVIDER`).
-3. **`~/.potion-kit/config.json`** — provider and model only; **do not put API keys there**.
+3. **`~/.potion-kit/config.json`** — provider, model, and optional `maxHistoryMessages`; **do not put API keys there**.
 
 #### .env variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `POTION_KIT_PROVIDER` | yes | `openai` or `anthropic` |
-| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | one required | API key for the chosen provider |
+| `POTION_KIT_PROVIDER` | yes | `openai`, `anthropic`, or `moonshot` |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `MOONSHOT_API_KEY` | one required | API key for the chosen provider |
 | `POTION_KIT_MODEL` | no | Chat model id (defaults: `gpt-5.2` / `claude-sonnet-4-5`). Must be a **chat** model. |
 | `POTION_KIT_API_KEY` | no | Fallback key if provider-specific key is not set |
-| `POTION_KIT_BASE_URL` | no | Custom base URL (e.g. OpenAI proxy, LiteLLM) |
+| `POTION_KIT_BASE_URL` | no | Custom base URL for the chosen provider (e.g. proxy, LiteLLM) |
+| `POTION_KIT_MAX_HISTORY_MESSAGES` | no | Max conversation turns sent to the API (default 10) |
 
 **Minimal `.env`:**
 
@@ -119,7 +120,7 @@ OPENAI_API_KEY=sk-your-key-here
 
 #### .env and security
 
-- **potion-kit never sends `.env` or API keys to the model.** Keys are read only by the CLI and used for authentication with the LLM provider (OpenAI/Anthropic). They are not included in the system prompt, chat history, or any message content sent to the model. The only way a key could appear in the conversation is if you paste it yourself in a chat message — so don’t.
+- **potion-kit never sends `.env` or API keys to the model.** Keys are read only by the CLI and used for authentication with the LLM provider (OpenAI, Anthropic, or Moonshot). They are not included in the system prompt, chat history, or any message content sent to the model. The only way a key could appear in the conversation is if you paste it yourself in a chat message — so don’t.
 - **Never commit `.env`.** It contains secrets. Add `.env` to your `.gitignore`. If the AI scaffolds a project for you, ensure `.env` is in that project’s `.gitignore` too.
 - **Never put API keys in `~/.potion-kit/config.json`.** That file is for provider and model only. Use `.env` or environment variables for keys.
 - **Never paste API keys in logs, issues, or chat.** If you paste a key into a chat message, it becomes part of the conversation and history.
@@ -127,13 +128,13 @@ OPENAI_API_KEY=sk-your-key-here
 
 ### Chat history
 
-Conversation is stored in **`.potion-kit/chat-history.json`** in the directory where you run `potion-kit chat`. The model uses it for context on the next run. Add `.potion-kit/` to `.gitignore` if you don’t want to commit chat history. Use `potion-kit clear` to reset history for that project.
+Conversation is stored in **`.potion-kit/chat-history.json`** in the directory where you run `potion-kit chat`. The model uses it for context on the next run. Only the last N messages (default 10) are sent to the API; set `POTION_KIT_MAX_HISTORY_MESSAGES` or `maxHistoryMessages` in `~/.potion-kit/config.json` to change this. Add `.potion-kit/` to `.gitignore` if you don’t want to commit chat history. Use `potion-kit clear` to reset history for that project.
 
 ### Legal
 
 potion-kit uses [UIPotion](https://uipotion.com) specifications and catalog. **By using potion-kit you are using UIPotion’s service and agree to the [UIPotion legal disclaimer and privacy policy](https://uipotion.com/legal).** That page covers disclaimers on AI-generated code, liability, and user responsibility. Please read it before use.
 
-**AI providers and your data.** You choose the model and provider (e.g. OpenAI, Anthropic) in config. You are aware what is sent in each request. By using a provider you agree to that provider’s terms of service, acceptable use, and data policies. potion-kit does not control how providers retain, process, or review your prompts and responses.
+**AI providers and your data.** You choose the model and provider (e.g. OpenAI, Anthropic, Kimi/Moonshot) in config. You are aware what is sent in each request. By using a provider you agree to that provider’s terms of service, acceptable use, and data policies. potion-kit does not control how providers retain, process, or review your prompts and responses.
 
 **Sensitive data and cloud LLM risk.** If your prompts include proprietary code, secrets, customer data, financials, or internal docs, the main risk is that you are voluntarily sending sensitive material to a third party. The precise risk depends on the provider’s retention, access controls, internal review practices, and breach likelihood. This is the general “cloud LLM” risk; consider what you send and which provider you use.
 

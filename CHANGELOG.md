@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2026-02-10
+
+### Added
+
+- **Moonshot (Kimi) provider** — New LLM provider: set `POTION_KIT_PROVIDER=moonshot` and `MOONSHOT_API_KEY`. Default model is `kimi-k2.5`. Uses a long-timeout fetch so reasoning models can complete.
+- **Configurable chat history length** — Number of conversation turns sent to the API is configurable via `POTION_KIT_MAX_HISTORY_MESSAGES` or `maxHistoryMessages` in `~/.potion-kit/config.json`. Default remains 10.
+
+### Changed
+
+- **Request timeout** — Increased from 5 to 15 minutes per turn to support slow reasoning models.
+- **Progress messages** — Removed "Step N of M" prefix; progress now shows only tool labels and "Waiting for model…" or "Model thinking…".
+- **AI SDK v6** — Upgraded to `ai` ^6 and provider SDKs (OpenAI, Anthropic, Moonshot); tool API uses `inputSchema` and `stopWhen`/`stepCountIs`. Zod 4, commander 14, dotenv 17; build uses `rimraf` for cross-platform clean.
+
+### Fixed
+
+- **Abort/timeout errors** — When chat fails with an abort or timeout (e.g. "This operation was aborted"), the error message now suggests rerunning your prompt; conversation history is kept, so continuing often works.
+
+[0.0.4]: https://github.com/uiPotion/potion-kit/compare/v0.0.3...v0.0.4
+
 ## [0.0.3] - 2026-02-07
 
 ### Added

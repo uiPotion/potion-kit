@@ -122,7 +122,7 @@ export function createPotionKitTools() {
     search_potions: tool({
       description:
         "Search the UIPotion index for components or layouts by keyword or category. Returns matching potions with id, name, category, excerpt. Use this to find which potions exist before suggesting or generating anything.",
-      parameters: z.object({
+      inputSchema: z.object({
         query: z.string().describe('Search query (e.g. "dashboard", "navbar", "button")'),
         category: z
           .string()
@@ -164,7 +164,7 @@ export function createPotionKitTools() {
     get_potion_spec: tool({
       description:
         "Fetch the full JSON spec for a single UIPotion guide. Call with category and id from search_potions. Do not invent category or id.",
-      parameters: z.object({
+      inputSchema: z.object({
         category: z.string().describe("Category (e.g. layouts, components)"),
         id: z.string().describe("Potion id (e.g. dashboard, button)"),
       }),
@@ -182,7 +182,7 @@ export function createPotionKitTools() {
     get_harold_project_info: tool({
       description:
         "Get info about the current static site project (if any): HaroldJS config (.haroldrc.json or package.json), existing partials, pages, styles, blog layouts. Returns only structure (file names and config), NOT file contents. When the user is iterating or asking for a fix, call read_project_file for the relevant file(s) to get current content before editing. If the dir is empty or not a HaroldJS project, the response will say so; then scaffold with the standard layout (one main.scss, no @import/@use).",
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         try {
           return getHaroldProjectInfo(process.cwd());
@@ -195,7 +195,7 @@ export function createPotionKitTools() {
     read_project_file: tool({
       description:
         "Read the current contents of a file in the user's project. Path must be relative to project root (e.g. src/partials/navbar.hbs, src/pages/index.hbs, src/styles/main.scss). Use this whenever the user asks to fix, change, or update existing code: read the file first, then make minimal edits based on the exact content returned. Do not regenerate files from scratch without reading them.",
-      parameters: z.object({
+      inputSchema: z.object({
         path: z
           .string()
           .describe(
@@ -228,7 +228,7 @@ export function createPotionKitTools() {
     fetch_doc_page: tool({
       description:
         "Fallback only: fetch the text content of a page from haroldjs.com or uipotion.com. You can fetch jsonData/posts.json first (e.g. https://www.haroldjs.com/jsonData/posts.json or https://uipotion.com/jsonData/posts.json) to get the doc index, then open specific pages. Use only when the information is not in the HaroldJS context or Potion specs (search_potions / get_potion_spec). Only for these two domains.",
-      parameters: z.object({
+      inputSchema: z.object({
         url: z
           .string()
           .describe("Full URL (must be from https://haroldjs.com or https://uipotion.com)"),
@@ -245,7 +245,7 @@ export function createPotionKitTools() {
     write_project_file: tool({
       description:
         'Create or overwrite a file in the user\'s project. Path must be relative to the project root; you cannot write outside this directory. Allowed: .hbs, .md, .scss, .css, .html, .json anywhere (including package.json, .haroldrc.json at root); .js only under src/assets/js/ for browser/Harold scripts; .gitignore at root. When the project is new or missing root setup, create package.json with scripts "build": "harold-scripts build", "start": "harold-scripts start", devDependencies harold-scripts, and a "harold" config object (see system prompt scaffold). Do NOT write Node.js scripts (no .js at project root). Do not write .env or paths containing "..".',
-      parameters: z.object({
+      inputSchema: z.object({
         path: z
           .string()
           .describe(
