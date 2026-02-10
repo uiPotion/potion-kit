@@ -6,9 +6,10 @@ CLI to build websites with **HaroldJS** (haroldjs.com) and **UIPotion** (uipotio
 
 ## Commands
 
-- **`potion-kit chat`** or **`potion-kit`** (default) — Interactive chat.
+- **`potion-kit chat`** — Interactive chat.
 - **`potion-kit chat "message"`** — Send one message and exit (one-shot).
 - **`potion-kit clear`** — Clear chat history for this project (next chat starts a new conversation).
+- **`potion-kit`** or **`potion-kit --help`** — Show usage and available commands. Unknown commands (e.g. `potion-kit clean`) also show help and do not call the API.
 
 ---
 

@@ -18,8 +18,8 @@ export interface ChatMessage {
 export interface CreateChatOptions {
   /** Called when the model makes progress (e.g. step N of M, tool names). Use for user-facing progress. */
   onProgress?: (message: string) => void;
-  /** Optional: build a user-friendly progress message from step and tool names (unique tools only). */
-  progressMessageBuilder?: (step: number, maxSteps: number, toolNames: string[]) => string;
+  /** Optional: build a user-friendly progress message from tool names (unique tools only). */
+  progressMessageBuilder?: (toolNames: string[]) => string;
   /** Optional: called for error messages (e.g. no text from model). If not set, uses console.error. */
   onError?: (message: string) => void;
 }
@@ -78,11 +78,9 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
   const model = createModel(config);
 
   const tools = createPotionKitTools();
-  let stepCount = 0;
 
   return {
     async send(messages: ChatMessage[]): Promise<string> {
-      stepCount = 0;
       const system = messages.find((m) => m.role === "system")?.content;
       const conversation = messages.filter((m) => m.role !== "system") as Array<{
         role: "user" | "assistant";
@@ -105,7 +103,6 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
           maxRetries: 0, // we handle 429 ourselves with one delayed retry
           abortSignal: controller.signal,
           onStepFinish: (stepResult) => {
-            stepCount++;
             if (onProgress) {
               const rawNames =
                 (stepResult.toolCalls as Array<{ toolName: string }> | undefined)?.map(
@@ -113,7 +110,7 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
                 ) ?? [];
               const uniqueNames = [...new Set(rawNames)];
               const message = progressMessageBuilder
-                ? progressMessageBuilder(stepCount, MAX_STEPS, uniqueNames)
+                ? progressMessageBuilder(uniqueNames)
                 : uniqueNames.length > 0
                   ? `${uniqueNames.join(", ")}. Waiting for model…`
                   : "Model thinking…";

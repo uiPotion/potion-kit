@@ -140,7 +140,7 @@ function createProgressReporter(): {
     onProgress: (msg) => {
       currentMessage = msg;
     },
-    progressMessageBuilder: (step, max, toolNames) => buildProgressMessage(step, max, toolNames),
+    progressMessageBuilder: buildProgressMessage,
     clear: () => {
       if (intervalId !== null) {
         clearInterval(intervalId);

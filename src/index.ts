@@ -18,12 +18,13 @@ const program = new Command();
 program
   .name("potion-kit")
   .description("CLI to build static sites with Handlebars, Markdown, and SCSS")
-  .version(pkg.version ?? "0.0.0");
+  .version(pkg.version ?? "0.0.0")
+  .showHelpAfterError(true);
 
 program
-  .command("chat [message...]", { isDefault: true })
+  .command("chat [message...]")
   .description(
-    "Chat with the AI (default command). Conversation is kept in .potion-kit/ so you can build the site over multiple turns."
+    "Chat with the AI. Conversation is kept in .potion-kit/ so you can build the site over multiple turns."
   )
   .action(async (messageParts: string[]) => {
     await runChat(messageParts ?? []);

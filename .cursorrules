@@ -204,7 +204,7 @@ We use **UI Potion** as the spec source for components and layouts. UI Potion pr
 - **build** — Run the project’s build (e.g. `npm run build`).
 - **config** — Configure LLM provider and API keys (stored in `~/.potion-kit/`).
 
-User-facing copy should say “project”, “site”, “static site”, “dev server”, “build” — not the name of the underlying generator.
+Unknown or invalid commands show help (usage and available commands); they do not call the API. User-facing copy should say “project”, “site”, “static site”, “dev server”, “build” — not the name of the underlying generator.
 
 ---
 

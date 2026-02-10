@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Commands** — `chat` is no longer the default command. Running `potion-kit` with no command, or with an unknown command (e.g. `potion-kit something`), shows usage and help instead of sending input to the API.
 - **Request timeout** — Increased from 5 to 15 minutes per turn to support slow reasoning models.
 - **Progress messages** — Removed "Step N of M" prefix; progress now shows only tool labels and "Waiting for model…" or "Model thinking…".
 - **AI SDK v6** — Upgraded to `ai` ^6 and provider SDKs (OpenAI, Anthropic, Moonshot); tool API uses `inputSchema` and `stopWhen`/`stepCountIs`. Zod 4, commander 14, dotenv 17; build uses `rimraf` for cross-platform clean.
