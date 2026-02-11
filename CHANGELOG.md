@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2026-02-11
+
+### Added
+
+- **Conversation summarization** — When history exceeds capacity, the "middle" conversation is summarized (short, information-dense) before sending to the API. Each request always includes: the first user message, an optional condensed summary, and the last N messages (default 10).
+- **HBS structure rules** — System prompt and Harold context now explicitly require: no `<style>` or inline styles in .hbs; no `<script>` in .hbs. CSS must go in src/styles/*.scss, browser JS in src/assets/js/*.js. Prevents inline styles/scripts when adding pages in follow-up iterations.
+
+### Changed
+
+- **Project-local config file** — LLM config file lookup is now scoped to the current working directory (`./config.json`, next to `.env`) instead of reading from a home-directory config path. API keys still must not be stored in `config.json`.
+- **AI step limit** — Increased maximum AI tool steps per turn from 8 to 16 to allow longer multi-step agent workflows.
+- **History message selection for long chats** — When history is long, chat message assembly now prioritizes user requests from the tail and keeps only the latest assistant message, reducing stale assistant self-conditioning in subsequent turns.
+- **Summary quality guardrails** — Conversation summarization now keeps durable context (user goals, constraints, unresolved issues, concrete file/command outcomes) and avoids treating unconfirmed assistant claims as facts.
+
+### Fixed
+
+- **Tool-use reliability in long conversations** — Added a per-turn reliability rule in chat message construction to treat older assistant replies as potentially stale and verify project state with tools before claiming changes.
+- **Coverage for long-history behavior** — Updated chat message tests to assert the new reliability rule and long-history message selection behavior.
+
+[0.0.5]: https://github.com/uiPotion/potion-kit/compare/v0.0.4...v0.0.5
+
 ## [0.0.4] - 2026-02-10
 
 ### Added

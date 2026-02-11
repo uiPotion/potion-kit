@@ -3,6 +3,9 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { loadLlmConfig } from "../src/config/load.js";
 
 describe("config", () => {
@@ -58,6 +61,38 @@ describe("config", () => {
         assert.strictEqual(config!.apiKey, "moonshot-test-key");
         assert.ok(config!.model === "kimi-k2.5" || config!.model);
       } finally {
+        restoreEnv();
+      }
+    });
+    it("reads provider/model/maxHistoryMessages from local config.json", () => {
+      saveEnv([
+        "POTION_KIT_PROVIDER",
+        "POTION_KIT_MODEL",
+        "POTION_KIT_MAX_HISTORY_MESSAGES",
+        "OPENAI_API_KEY",
+      ]);
+      const originalCwd = process.cwd();
+      const dir = mkdtempSync(join(tmpdir(), "potion-kit-config-"));
+      try {
+        process.chdir(dir);
+        writeFileSync(
+          join(dir, "config.json"),
+          JSON.stringify({ provider: "openai", model: "gpt-5.2", maxHistoryMessages: 7 }),
+          "utf-8"
+        );
+        process.env.OPENAI_API_KEY = "sk-test-key";
+        delete process.env.POTION_KIT_PROVIDER;
+        delete process.env.POTION_KIT_MODEL;
+        delete process.env.POTION_KIT_MAX_HISTORY_MESSAGES;
+
+        const config = loadLlmConfig();
+        assert.ok(config !== null);
+        assert.strictEqual(config!.provider, "openai");
+        assert.strictEqual(config!.model, "gpt-5.2");
+        assert.strictEqual(config!.maxHistoryMessages, 7);
+      } finally {
+        process.chdir(originalCwd);
+        rmSync(dir, { recursive: true, force: true });
         restoreEnv();
       }
     });

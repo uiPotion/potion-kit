@@ -12,9 +12,10 @@ import { createInterface } from "node:readline";
 import { loadLlmConfig, type LlmConfig } from "../config/index.js";
 import { createChat, type CreateChatOptions } from "../ai/client.js";
 import { getFullSystemPrompt } from "../ai/system-prompt.js";
-import type { ChatMessage } from "../ai/client.js";
+import { summarizeConversation } from "../ai/summarize.js";
 import { readHistory, writeHistory } from "./chat-history.js";
 import type { HistoryMessage } from "./chat-history.js";
+import { buildMessages } from "./chat-messages.js";
 import { cli, buildProgressMessage } from "../cli/formatting.js";
 
 const DEFAULT_MESSAGE =
@@ -30,7 +31,7 @@ function formatChatError(err: unknown): string {
   if (/not a chat model|v1\/chat\/completions|v1\/completions/i.test(msg)) {
     return (
       msg +
-      "\n\nUse a chat model (e.g. gpt-5.2, gpt-4o), not a completion-only model. Set POTION_KIT_MODEL in .env or ~/.potion-kit/config.json."
+      "\n\nUse a chat model (e.g. gpt-5.2, gpt-4o), not a completion-only model. Set POTION_KIT_MODEL in .env or ./config.json."
     );
   }
   if (/rate limit|30,000 input tokens per minute/i.test(msg)) {
@@ -69,20 +70,6 @@ function printConfigError(): void {
     );
   }
   console.error("");
-}
-
-function buildMessages(
-  systemPrompt: string,
-  history: HistoryMessage[],
-  userMessage: string,
-  maxHistoryMessages: number
-): ChatMessage[] {
-  const tail = history.length > maxHistoryMessages ? history.slice(-maxHistoryMessages) : history;
-  const conversation = [
-    ...tail.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user" as const, content: userMessage },
-  ];
-  return [{ role: "system", content: systemPrompt }, ...conversation];
 }
 
 export async function runChat(messageParts: string[]): Promise<void> {
@@ -162,7 +149,20 @@ async function runOneShot(cwd: string, config: LlmConfig, userMessage: string): 
   const history = readHistory(cwd);
   const message = userMessage || DEFAULT_MESSAGE;
   const maxHistory = config.maxHistoryMessages ?? DEFAULT_MAX_HISTORY_MESSAGES;
-  const messages = buildMessages(systemPrompt, history, message, maxHistory);
+
+  let summary: string | null = null;
+  if (history.length > 1 + maxHistory) {
+    const middle = history.slice(1, history.length - maxHistory);
+    progress.onProgress?.("Summarizing conversation…");
+    progress.start();
+    try {
+      summary = await summarizeConversation(config, middle);
+    } finally {
+      progress.clear();
+    }
+  }
+
+  const messages = buildMessages(systemPrompt, history, message, maxHistory, summary);
 
   try {
     console.log(cli.user("You: ") + message);
@@ -232,7 +232,18 @@ async function runInteractive(cwd: string, config: LlmConfig): Promise<void> {
 
       try {
         const maxHistory = config.maxHistoryMessages ?? DEFAULT_MAX_HISTORY_MESSAGES;
-        const messages = buildMessages(systemPrompt, history, input, maxHistory);
+        let summary: string | null = null;
+        if (history.length > 1 + maxHistory) {
+          const middle = history.slice(1, history.length - maxHistory);
+          progress.onProgress?.("Summarizing conversation…");
+          progress.start();
+          try {
+            summary = await summarizeConversation(config, middle);
+          } finally {
+            progress.clear();
+          }
+        }
+        const messages = buildMessages(systemPrompt, history, input, maxHistory, summary);
         progress.start();
         try {
           const reply = await chat.send(messages);

@@ -3,11 +3,8 @@
  * Config drives which provider we use; tools are built-in (search_potions, get_potion_spec, get_harold_project_info, fetch_doc_page, write_project_file).
  */
 import { generateText, stepCountIs } from "ai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createMoonshotAI } from "@ai-sdk/moonshotai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { Agent, fetch as undiciFetch } from "undici";
 import type { LlmConfig } from "../config/index.js";
+import { createModel } from "./model.js";
 import { createPotionKitTools } from "./tools.js";
 
 export interface ChatMessage {
@@ -25,23 +22,8 @@ export interface CreateChatOptions {
 }
 
 const REQUEST_TIMEOUT_MS = 900_000; // 15 minutes (multi-step tool use and reasoning models can be slow)
-const MAX_STEPS = 8; // tool rounds per turn; lower to reduce token usage and stay under rate limits
+const MAX_STEPS = 16; // tool rounds per turn; higher limit for longer multi-tool flows
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // wait 1 min before single retry on 429 (limit is per minute)
-
-/** Custom fetch with long headers/body timeouts so slow APIs (e.g. Moonshot reasoning) don't hit undici defaults. */
-const longTimeoutAgent = new Agent({
-  headersTimeout: REQUEST_TIMEOUT_MS,
-  bodyTimeout: REQUEST_TIMEOUT_MS,
-});
-
-function longTimeoutFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const opts = { ...init, dispatcher: longTimeoutAgent };
-  // Casts: undici and DOM fetch types differ; at runtime undici accepts URL, string, or Request
-  return undiciFetch(
-    input as Parameters<typeof undiciFetch>[0],
-    opts as Record<string, unknown>
-  ) as unknown as Promise<Response>;
-}
 
 function isRateLimitError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -50,22 +32,6 @@ function isRateLimitError(err: unknown): boolean {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const providerCreators = {
-  openai: createOpenAI,
-  moonshot: createMoonshotAI,
-  anthropic: createAnthropic,
-} as const;
-
-function createModel(config: LlmConfig) {
-  const create = providerCreators[config.provider];
-  const options = {
-    apiKey: config.apiKey,
-    baseURL: config.baseUrl,
-    fetch: longTimeoutFetch,
-  };
-  return create(options)(config.model);
 }
 
 /**

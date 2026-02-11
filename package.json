@@ -1,6 +1,6 @@
 {
   "name": "potion-kit",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "CLI to build HaroldJS + UIPotion websites",
   "author": "Julian Ćwirko <julian.io>",
   "type": "module",

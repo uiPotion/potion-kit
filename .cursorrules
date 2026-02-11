@@ -137,6 +137,8 @@ Required: `layout` (string), `title` (string), `publicationDate` (string, `YYYY-
 - Do not edit files in `build/` (generated).
 - Do not skip required front matter.
 - Do not use absolute or root paths for assets/links.
+- Do not put `<style>` or inline `style="…"` in .hbs — use class names and SCSS in src/styles/.
+- Do not put `<script>` in .hbs — put JS in src/assets/js/ and link with `{{relativePath 'assets/js/…'}}`.
 - Do not put browser/Harold.js scripts anywhere other than **`src/assets/js/`** (e.g. not in `statics/`, not at `src/` root).
 - Do not prefix Handlebars partials with `_` (only SCSS partials).
 - You may mention Harold.js and UI Potion when describing the stack to users.

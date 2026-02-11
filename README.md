@@ -91,7 +91,7 @@ Config is loaded in this order (later overrides earlier):
 
 1. **`.env` in the current working directory** (where you run potion-kit).
 2. **Environment variables** (e.g. `OPENAI_API_KEY`, `POTION_KIT_PROVIDER`).
-3. **`~/.potion-kit/config.json`** — provider, model, and optional `maxHistoryMessages`; **do not put API keys there**.
+3. **`./config.json`** (in the current working directory) — provider, model, and optional `maxHistoryMessages`; **do not put API keys there**.
 
 #### .env variables
 
@@ -123,13 +123,13 @@ OPENAI_API_KEY=sk-your-key-here
 
 - **potion-kit never sends `.env` or API keys to the model.** Keys are read only by the CLI and used for authentication with the LLM provider (OpenAI, Anthropic, or Moonshot). They are not included in the system prompt, chat history, or any message content sent to the model. The only way a key could appear in the conversation is if you paste it yourself in a chat message — so don’t.
 - **Never commit `.env`.** It contains secrets. Add `.env` to your `.gitignore`. If the AI scaffolds a project for you, ensure `.env` is in that project’s `.gitignore` too.
-- **Never put API keys in `~/.potion-kit/config.json`.** That file is for provider and model only. Use `.env` or environment variables for keys.
+- **Never put API keys in `config.json`.** That file is for provider and model only. Use `.env` or environment variables for keys.
 - **Never paste API keys in logs, issues, or chat.** If you paste a key into a chat message, it becomes part of the conversation and history.
 - **Where to put `.env`:** In the directory from which you run `potion-kit` (usually your project root). One `.env` per project.
 
 ### Chat history
 
-Conversation is stored in **`.potion-kit/chat-history.json`** in the directory where you run `potion-kit chat`. The model uses it for context on the next run. Only the last N messages (default 10) are sent to the API; set `POTION_KIT_MAX_HISTORY_MESSAGES` or `maxHistoryMessages` in `~/.potion-kit/config.json` to change this. Add `.potion-kit/` to `.gitignore` if you don’t want to commit chat history. Use `potion-kit clear` to reset history for that project.
+Conversation is stored in **`.potion-kit/chat-history.json`** in the directory where you run `potion-kit chat`. The model uses it for context on the next run. Each request sends: the **first user message** (always kept), a **condensed summary** of the middle conversation (when history exceeds capacity), and the **last N messages** (default 10). Set `POTION_KIT_MAX_HISTORY_MESSAGES` or `maxHistoryMessages` in `./config.json` to change the tail size. Add `.potion-kit/` to `.gitignore` if you don’t want to commit chat history. Use `potion-kit clear` to reset history for that project.
 
 ### Legal
 

@@ -1,5 +1,4 @@
 import { readFileSync, existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { config as loadEnv } from "dotenv";
 import type { LlmConfig, Provider } from "./types.js";
@@ -13,8 +12,7 @@ function ensureEnvLoaded(): void {
   loadEnv({ quiet: true }); // dotenv default: path is process.cwd() + '/.env'
 }
 
-const CONFIG_DIR = join(homedir(), ".potion-kit");
-const CONFIG_FILE = join(CONFIG_DIR, "config.json");
+const CONFIG_FILE = "config.json";
 
 const PROVIDER_ENV: Record<Provider, string> = {
   openai: "OPENAI_API_KEY",
@@ -32,7 +30,7 @@ const DEFAULT_MODELS: Record<Provider, string> = {
  * Load LLM config from:
  * 1. .env in current working directory (if present)
  * 2. Env vars: POTION_KIT_PROVIDER, POTION_KIT_MODEL, OPENAI_API_KEY / ANTHROPIC_API_KEY / MOONSHOT_API_KEY
- * 3. Optional file: ~/.potion-kit/config.json (provider, model, maxHistoryMessages; never put keys there).
+ * 3. Optional file: ./config.json in current working directory (provider, model, maxHistoryMessages; never put keys there).
  *    See config.example.json in this package.
  */
 export function loadLlmConfig(): LlmConfig | null {
@@ -68,11 +66,12 @@ function readConfigFile(): {
   model?: string;
   maxHistoryMessages?: number;
 } {
-  if (!existsSync(CONFIG_FILE)) {
+  const configPath = join(process.cwd(), CONFIG_FILE);
+  if (!existsSync(configPath)) {
     return {};
   }
   try {
-    const raw = readFileSync(CONFIG_FILE, "utf-8");
+    const raw = readFileSync(configPath, "utf-8");
     const data = JSON.parse(raw) as {
       provider?: string;
       model?: string;
@@ -95,4 +94,4 @@ function parseMaxHistoryMessages(value: string | number | undefined): number | u
   return n;
 }
 
-export { CONFIG_DIR, CONFIG_FILE };
+export { CONFIG_FILE };
