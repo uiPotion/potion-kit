@@ -1,7 +1,7 @@
 {
   "name": "potion-kit",
   "version": "0.0.6",
-  "description": "CLI to build HaroldJS + UIPotion websites",
+  "description": "AI-powered CLI for generating static websites using LLM agents. Automates UI component scaffolding and generation.",
   "author": "Julian Ćwirko <julian.io>",
   "type": "module",
   "main": "dist/index.js",
@@ -23,11 +23,28 @@
     "pre-commit": "lint-staged && npm run typecheck"
   },
   "keywords": [
-    "harold",
-    "uipotion",
+    "ai",
+    "agent",
+    "llm",
+    "codegen",
+    "code-generation",
+    "ai-assisted",
+    "assistant",
+    "cursor",
     "static-site",
+    "static-site-generator",
+    "ssg",
+    "website-builder",
     "cli",
-    "ui components"
+    "ui-components",
+    "component-library",
+    "handlebars",
+    "scss",
+    "markdown",
+    "frontend",
+    "scaffolding",
+    "uipotion",
+    "harold"
   ],
   "license": "MIT",
   "repository": {
