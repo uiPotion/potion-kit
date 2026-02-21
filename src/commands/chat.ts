@@ -10,13 +10,21 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { loadLlmConfig, type LlmConfig } from "../config/index.js";
-import { createChat, type CreateChatOptions } from "../ai/client.js";
+import { createChat, type ChatTurnTrace, type CreateChatOptions } from "../ai/client.js";
 import { getFullSystemPrompt } from "../ai/system-prompt.js";
-import { summarizeConversation } from "../ai/summarize.js";
-import { readHistory, writeHistory } from "./chat-history.js";
+import {
+  summarizeConversationWithRetry,
+  buildFallbackSummary,
+  stripPreviousSummaryPrefix,
+  type SummarySource,
+} from "../ai/summarize.js";
+import { readHistory, readSummaryState, writeHistory, writeSummaryState } from "./chat-history.js";
 import type { HistoryMessage } from "./chat-history.js";
 import { buildMessages } from "./chat-messages.js";
 import { cli, buildProgressMessage } from "../cli/formatting.js";
+import { planSummaryUpdate, splitSummaryChunks } from "./summary-cache.js";
+import { appendChatEvent } from "./chat-events.js";
+import { guardAssistantReply } from "./reply-guard.js";
 
 const DEFAULT_MESSAGE =
   "What can you help me build? I’d like to create a static site with Handlebars and the UIPotion components.";
@@ -141,54 +149,39 @@ function createProgressReporter(): {
 async function runOneShot(cwd: string, config: LlmConfig, userMessage: string): Promise<void> {
   const systemPrompt = await getFullSystemPrompt();
   const progress = createProgressReporter();
-  const chat = createChat(config, {
-    onProgress: progress.onProgress,
-    progressMessageBuilder: progress.progressMessageBuilder,
-    onError: (msg) => console.error(cli.error(msg)),
-  });
+  const { chat, traceState } = createTracedChat(config, progress);
   const history = readHistory(cwd);
   const message = userMessage || DEFAULT_MESSAGE;
   const maxHistory = config.maxHistoryMessages ?? DEFAULT_MAX_HISTORY_MESSAGES;
+  const summaryResult = await getCachedOrFreshSummary(cwd, config, history, maxHistory, progress);
 
-  let summary: string | null = null;
-  if (history.length > 1 + maxHistory) {
-    const middle = history.slice(1, history.length - maxHistory);
-    progress.onProgress?.("Summarizing conversation…");
-    progress.start();
-    try {
-      summary = await summarizeConversation(config, middle);
-    } finally {
-      progress.clear();
-    }
-  }
-
-  const messages = buildMessages(systemPrompt, history, message, maxHistory, summary);
+  const messages = buildMessages(systemPrompt, history, message, maxHistory, summaryResult.summary);
 
   try {
     console.log(cli.user("You: ") + message);
-    progress.start();
-    try {
-      const reply = await chat.send(messages);
-      progress.clear();
-      const replyToSave = reply.trim() || "(No text reply from the model.)";
-      writeHistory(cwd, [
-        ...history,
-        { role: "user", content: message },
-        { role: "assistant", content: replyToSave },
-      ]);
-      if (reply.trim()) {
-        console.log("\n" + cli.separator());
-        console.log(cli.agentLabel("Potion-kit:") + "\n");
-        console.log(cli.agentReply(reply));
-      } else {
-        console.log(
-          cli.intro(
-            "The model didn't return any text this time (it may have only run tools). Try rephrasing your request."
-          )
-        );
+    const result = await sendTurnAndPersist({
+      cwd,
+      chat,
+      progress,
+      traceState,
+      history,
+      userMessage: message,
+      messages,
+      summarySource: summaryResult.source,
+    });
+    if (result.reply.trim()) {
+      console.log("\n" + cli.separator());
+      console.log(cli.agentLabel("Potion-kit:") + "\n");
+      console.log(cli.agentReply(result.reply));
+      if (result.guarded.guarded) {
+        console.log("\n" + cli.intro(buildUnverifiedCompletionGuidance(result.trace)));
       }
-    } finally {
-      progress.clear();
+    } else {
+      console.log(
+        cli.intro(
+          "The model didn't return any text this time (it may have only run tools). Try rephrasing your request."
+        )
+      );
     }
   } catch (err) {
     console.error(cli.error("potion-kit: chat failed: " + formatChatError(err)));
@@ -199,11 +192,7 @@ async function runOneShot(cwd: string, config: LlmConfig, userMessage: string): 
 async function runInteractive(cwd: string, config: LlmConfig): Promise<void> {
   const systemPrompt = await getFullSystemPrompt();
   const progress = createProgressReporter();
-  const chat = createChat(config, {
-    onProgress: progress.onProgress,
-    progressMessageBuilder: progress.progressMessageBuilder,
-    onError: (msg) => console.error(cli.error(msg)),
-  });
+  const { chat, traceState } = createTracedChat(config, progress);
   let history: HistoryMessage[] = readHistory(cwd);
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -232,44 +221,46 @@ async function runInteractive(cwd: string, config: LlmConfig): Promise<void> {
 
       try {
         const maxHistory = config.maxHistoryMessages ?? DEFAULT_MAX_HISTORY_MESSAGES;
-        let summary: string | null = null;
-        if (history.length > 1 + maxHistory) {
-          const middle = history.slice(1, history.length - maxHistory);
-          progress.onProgress?.("Summarizing conversation…");
-          progress.start();
-          try {
-            summary = await summarizeConversation(config, middle);
-          } finally {
-            progress.clear();
+        const summaryResult = await getCachedOrFreshSummary(
+          cwd,
+          config,
+          history,
+          maxHistory,
+          progress
+        );
+        const messages = buildMessages(
+          systemPrompt,
+          history,
+          input,
+          maxHistory,
+          summaryResult.summary
+        );
+        const result = await sendTurnAndPersist({
+          cwd,
+          chat,
+          progress,
+          traceState,
+          history,
+          userMessage: input,
+          messages,
+          summarySource: summaryResult.source,
+        });
+        history = result.nextHistory;
+        if (result.reply.trim()) {
+          console.log("\n" + cli.separator());
+          console.log(cli.agentLabel("Potion-kit:") + "\n");
+          console.log(cli.agentReply(result.reply) + "\n");
+          if (result.guarded.guarded) {
+            console.log(cli.intro(buildUnverifiedCompletionGuidance(result.trace)) + "\n");
           }
-        }
-        const messages = buildMessages(systemPrompt, history, input, maxHistory, summary);
-        progress.start();
-        try {
-          const reply = await chat.send(messages);
-          progress.clear();
-          const replyToSave = reply.trim() || "(No text reply from the model.)";
-          history = [
-            ...history,
-            { role: "user", content: input },
-            { role: "assistant", content: replyToSave },
-          ];
-          writeHistory(cwd, history);
-          if (reply.trim()) {
-            console.log("\n" + cli.separator());
-            console.log(cli.agentLabel("Potion-kit:") + "\n");
-            console.log(cli.agentReply(reply) + "\n");
-          } else {
-            console.log(
-              "\n" +
-                cli.intro(
-                  'The model didn\'t return any text this time (it may have only run tools). Try asking again or rephrase, e.g. "What were we building?" or "Summarize our plan."'
-                ) +
-                "\n"
-            );
-          }
-        } finally {
-          progress.clear();
+        } else {
+          console.log(
+            "\n" +
+              cli.intro(
+                'The model didn\'t return any text this time (it may have only run tools). Try asking again or rephrase, e.g. "What were we building?" or "Summarize our plan."'
+              ) +
+              "\n"
+          );
         }
       } catch (err) {
         console.error(cli.error("potion-kit: chat failed: " + formatChatError(err)));
@@ -279,4 +270,193 @@ async function runInteractive(cwd: string, config: LlmConfig): Promise<void> {
   }
 
   prompt();
+}
+
+function normalizeTurnTrace(trace: ChatTurnTrace | null): ChatTurnTrace {
+  if (trace) return trace;
+  return {
+    toolEvents: [],
+    stepsUsed: 0,
+    finishReason: "unknown",
+  };
+}
+
+function createTracedChat(
+  config: LlmConfig,
+  progress: ReturnType<typeof createProgressReporter>
+): { chat: ReturnType<typeof createChat>; traceState: { current: ChatTurnTrace | null } } {
+  const traceState = { current: null as ChatTurnTrace | null };
+  const chat = createChat(config, {
+    onProgress: progress.onProgress,
+    progressMessageBuilder: progress.progressMessageBuilder,
+    onError: (msg) => console.error(cli.error(msg)),
+    onTurnTrace: (trace) => {
+      traceState.current = trace;
+    },
+  });
+  return { chat, traceState };
+}
+
+async function sendTurnAndPersist(params: {
+  cwd: string;
+  chat: ReturnType<typeof createChat>;
+  progress: ReturnType<typeof createProgressReporter>;
+  traceState: { current: ChatTurnTrace | null };
+  history: HistoryMessage[];
+  userMessage: string;
+  messages: ReturnType<typeof buildMessages>;
+  summarySource: SummarySource;
+}): Promise<{
+  reply: string;
+  guarded: ReturnType<typeof guardAssistantReply>;
+  nextHistory: HistoryMessage[];
+  trace: ChatTurnTrace;
+}> {
+  const { cwd, chat, progress, traceState, history, userMessage, messages, summarySource } = params;
+  progress.start();
+  try {
+    traceState.current = null;
+    const reply = await chat.send(messages);
+    const guarded = guardAssistantReply(reply, traceState.current);
+    const replyToSave = guarded.replyToSave || "(No text reply from the model.)";
+    const nextHistory: HistoryMessage[] = [
+      ...history,
+      { role: "user" as const, content: userMessage },
+      { role: "assistant" as const, content: replyToSave },
+    ];
+    writeHistory(cwd, nextHistory);
+    const trace = normalizeTurnTrace(traceState.current);
+    appendChatEvent(cwd, {
+      timestamp: new Date().toISOString(),
+      trace,
+      hasVerifiedWrite: guarded.hasVerifiedWrite,
+      replyWasGuarded: guarded.guarded,
+      summarySource,
+    });
+    return { reply, guarded, nextHistory, trace };
+  } finally {
+    progress.clear();
+  }
+}
+
+function buildUnverifiedCompletionGuidance(trace: ChatTurnTrace): string {
+  const successfulWrites = trace.toolEvents.filter(
+    (event) => event.toolName === "write_project_file" && event.ok === true
+  ).length;
+  const successfulReads = trace.toolEvents.filter(
+    (event) => event.toolName === "read_project_file" && event.ok === true
+  ).length;
+  const recentTools = getRecentUniqueTools(trace, 3);
+  const recentToolsText = recentTools.length > 0 ? recentTools.join(", ") : "none";
+
+  return [
+    `Unverified completion: this turn recorded ${successfulWrites} successful file writes (reads: ${successfulReads}; recent tools: ${recentToolsText}).`,
+    'Ask the assistant: "Apply the requested fix now using write_project_file, then list each changed path."',
+    "Then verify with npm run build (and npm test if available).",
+  ].join(" ");
+}
+
+function getRecentUniqueTools(trace: ChatTurnTrace, limit: number): string[] {
+  const out: string[] = [];
+  for (let i = trace.toolEvents.length - 1; i >= 0; i -= 1) {
+    const name = trace.toolEvents[i].toolName;
+    if (!name || out.includes(name)) continue;
+    out.push(name);
+    if (out.length >= limit) break;
+  }
+  return out.reverse();
+}
+
+async function getCachedOrFreshSummary(
+  cwd: string,
+  config: LlmConfig,
+  history: HistoryMessage[],
+  maxHistory: number,
+  progress: ReturnType<typeof createProgressReporter>
+): Promise<{ summary: string | null; source: SummarySource }> {
+  const plan = planSummaryUpdate(history, maxHistory, readSummaryState(cwd));
+  if (plan.reuseCachedSummary) return { summary: plan.reuseCachedSummary, source: "cache-reuse" };
+
+  if (plan.summarizeFrom >= plan.middleEnd) return { summary: null, source: "none" };
+  const unsummarizedMiddle = history.slice(plan.summarizeFrom, plan.middleEnd);
+  const chunks = splitSummaryChunks(unsummarizedMiddle);
+  if (chunks.length === 0) return { summary: null, source: "none" };
+
+  progress.start();
+  progress.onProgress?.("Summarizing conversation…");
+  try {
+    let rollingSummary = plan.seedSummary ? stripPreviousSummaryPrefix(plan.seedSummary) : "";
+    let processedChunks = 0;
+    let usedPrimary = false;
+    let usedRetry = false;
+    let usedFallback = false;
+
+    for (let i = 0; i < chunks.length; i += 1) {
+      progress.onProgress?.(`Summarizing conversation… (${i + 1}/${chunks.length})`);
+      const chunk = chunks[i];
+      const summaryInput: HistoryMessage[] = rollingSummary
+        ? [
+            { role: "assistant", content: `Previous condensed summary:\n${rollingSummary}` },
+            ...chunk,
+          ]
+        : chunk;
+
+      let summarized = "";
+      let chunkSource: SummarySource | null = null;
+      try {
+        const modelSummary = await summarizeConversationWithRetry(config, summaryInput);
+        summarized = modelSummary.summary.trim();
+        chunkSource = modelSummary.source;
+      } catch (err) {
+        summarized = "";
+        chunkSource = null;
+        console.warn(
+          "Summarization request failed:",
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+
+      const finalSummary = summarized || buildFallbackSummary(summaryInput);
+      if (!finalSummary) {
+        break;
+      }
+
+      rollingSummary = stripPreviousSummaryPrefix(finalSummary);
+      processedChunks += 1;
+
+      if (summarized) {
+        if (chunkSource === "model-retry") usedRetry = true;
+        else if (chunkSource === "model-primary") usedPrimary = true;
+      } else {
+        usedFallback = true;
+      }
+    }
+
+    const finalSummary = rollingSummary || null;
+    const finalSource: SummarySource = usedRetry
+      ? "model-retry"
+      : usedPrimary
+        ? "model-primary"
+        : usedFallback
+          ? "fallback-local"
+          : finalSummary
+            ? "cache-reuse"
+            : "none";
+
+    if (!finalSummary) return { summary: null, source: finalSource };
+    if (processedChunks !== chunks.length) {
+      // Avoid advancing cache coverage unless every chunk was successfully summarized.
+      return { summary: finalSummary, source: finalSource };
+    }
+
+    writeSummaryState(cwd, {
+      summary: finalSummary,
+      summarizedUntil: plan.middleEnd,
+      firstUserMessage: plan.firstUserMessage,
+      incrementalUpdates: plan.nextIncrementalUpdates,
+    });
+    return { summary: finalSummary, source: finalSource };
+  } finally {
+    progress.clear();
+  }
 }

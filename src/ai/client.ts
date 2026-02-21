@@ -19,10 +19,26 @@ export interface CreateChatOptions {
   progressMessageBuilder?: (toolNames: string[]) => string;
   /** Optional: called for error messages (e.g. no text from model). If not set, uses console.error. */
   onError?: (message: string) => void;
+  /** Optional: structured trace of tools used in the current turn. */
+  onTurnTrace?: (trace: ChatTurnTrace) => void;
+}
+
+export interface ChatToolEvent {
+  toolName: string;
+  ok: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface ChatTurnTrace {
+  toolEvents: ChatToolEvent[];
+  stepsUsed: number;
+  finishReason: string;
 }
 
 const REQUEST_TIMEOUT_MS = 900_000; // 15 minutes (multi-step tool use and reasoning models can be slow)
-const MAX_STEPS = 16; // tool rounds per turn; higher limit for longer multi-tool flows
+const DEFAULT_MAX_STEPS = 16; // tool rounds per turn; higher limit for longer multi-tool flows
+const DEFAULT_MAX_OUTPUT_TOKENS = 16_384; // per-turn output limit
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // wait 1 min before single retry on 429 (limit is per minute)
 
 function isRateLimitError(err: unknown): boolean {
@@ -40,13 +56,16 @@ function sleep(ms: number): Promise<void> {
  * Tools (search_potions, get_potion_spec, get_harold_project_info, read_project_file, fetch_doc_page, write_project_file) are always available; multi-step so the model can call tools then reply.
  */
 export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
-  const { onProgress, progressMessageBuilder, onError } = options;
+  const { onProgress, progressMessageBuilder, onError, onTurnTrace } = options;
   const model = createModel(config);
+  const maxToolSteps = config.maxToolSteps ?? DEFAULT_MAX_STEPS;
+  const maxOutputTokens = config.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
 
   const tools = createPotionKitTools();
 
   return {
     async send(messages: ChatMessage[]): Promise<string> {
+      const toolEvents: ChatToolEvent[] = [];
       const system = messages.find((m) => m.role === "system")?.content;
       const conversation = messages.filter((m) => m.role !== "system") as Array<{
         role: "user" | "assistant";
@@ -64,11 +83,12 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
           system: system ?? undefined,
           messages: conversation,
           tools,
-          stopWhen: stepCountIs(MAX_STEPS),
-          maxOutputTokens: 16_384, // per-step output limit; "length" finish = hit this before replying
+          stopWhen: stepCountIs(maxToolSteps),
+          maxOutputTokens, // per-turn output limit; "length" finish = hit this before replying
           maxRetries: 0, // we handle 429 ourselves with one delayed retry
           abortSignal: controller.signal,
           onStepFinish: (stepResult) => {
+            toolEvents.push(...extractToolEvents(stepResult));
             if (onProgress) {
               const rawNames =
                 (stepResult.toolCalls as Array<{ toolName: string }> | undefined)?.map(
@@ -96,6 +116,11 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
       }
 
       try {
+        onTurnTrace?.({
+          toolEvents,
+          stepsUsed: result.steps.length,
+          finishReason: result.finishReason,
+        });
         const text = result.text?.trim() ?? "";
         if (text) return text;
         const fromSteps = result.steps
@@ -113,17 +138,17 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
         }
         // No text in any step: step limit or length; give a helpful fallback so the user isn't left with nothing
         const stepsUsed = result.steps.length;
-        const hitStepLimit = result.finishReason === "tool-calls" || stepsUsed >= MAX_STEPS;
+        const hitStepLimit = result.finishReason === "tool-calls" || stepsUsed >= maxToolSteps;
         if (onError) {
           onError(
             hitStepLimit
-              ? `Step limit reached (${stepsUsed} steps). The assistant may have created or updated files but didn't get to send a final message. Check your project and ask again if you want a summary or more changes.`
+              ? `Step limit reached (${stepsUsed}/${maxToolSteps} steps). The assistant may have created or updated files but didn't get to send a final message. Check your project and ask again if you want a summary or more changes.`
               : `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${stepsUsed}). Try asking again.`
           );
         } else {
           console.error(
             hitStepLimit
-              ? `Step limit reached (${stepsUsed} steps). Check your project for changes.`
+              ? `Step limit reached (${stepsUsed}/${maxToolSteps} steps). Check your project for changes.`
               : `potion-kit: model returned no text (finishReason: ${result.finishReason}, steps: ${stepsUsed}). Try asking again.`
           );
         }
@@ -146,4 +171,62 @@ export function createChat(config: LlmConfig, options: CreateChatOptions = {}) {
       }
     },
   };
+}
+
+function extractToolEvents(stepResult: unknown): ChatToolEvent[] {
+  const step = stepResult as {
+    toolCalls?: Array<{ toolName?: unknown; toolCallId?: unknown }>;
+    toolResults?: Array<{
+      toolName?: unknown;
+      toolCallId?: unknown;
+      /** AI SDK v6: tool return value */
+      output?: unknown;
+      /** Legacy / stream shape */
+      result?: unknown;
+      isError?: unknown;
+    }>;
+  };
+  const calls = Array.isArray(step.toolCalls) ? step.toolCalls : [];
+  const results = Array.isArray(step.toolResults) ? step.toolResults : [];
+
+  // No calls recorded — read events directly from results (some SDK versions omit toolCalls).
+  if (calls.length === 0) {
+    return results.map((r) =>
+      parseToolEvent(typeof r.toolName === "string" ? r.toolName : "unknown_tool", r)
+    );
+  }
+
+  return calls.map((call) => {
+    const toolName = typeof call.toolName === "string" ? call.toolName : "unknown_tool";
+    const matched = results.find(
+      (r) =>
+        call.toolCallId != null &&
+        r.toolCallId != null &&
+        String(call.toolCallId) === String(r.toolCallId)
+    );
+    return parseToolEvent(toolName, matched);
+  });
+}
+
+function parseToolEvent(
+  toolName: string,
+  result: { output?: unknown; result?: unknown; isError?: unknown } | undefined
+): ChatToolEvent {
+  if (!result) return { toolName, ok: false };
+
+  // AI SDK sets isError on tool result entries (e.g. stream path).
+  if (typeof result.isError === "boolean") return { toolName, ok: !result.isError };
+
+  // AI SDK v6 uses .output for the tool return value; fallback to .result for other shapes.
+  const raw = result.output !== undefined ? result.output : result.result;
+  const payload = raw && typeof raw === "object" ? raw : null;
+  if (payload) {
+    const p = payload as { ok?: unknown; path?: unknown };
+    // Tools like write_project_file/read_project_file return { ok: true|false }; others return e.g. { spec }, { potions }.
+    const ok = typeof p.ok === "boolean" ? p.ok : true;
+    const path = typeof p.path === "string" ? p.path : undefined;
+    return { toolName, ok, path };
+  }
+
+  return { toolName, ok: raw !== undefined };
 }

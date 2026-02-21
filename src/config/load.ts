@@ -27,10 +27,12 @@ const DEFAULT_MODELS: Record<Provider, string> = {
 };
 
 /**
- * Load LLM config from:
- * 1. .env in current working directory (if present)
- * 2. Env vars: POTION_KIT_PROVIDER, POTION_KIT_MODEL, OPENAI_API_KEY / ANTHROPIC_API_KEY / MOONSHOT_API_KEY
- * 3. Optional file: ./config.json in current working directory (provider, model, maxHistoryMessages; never put keys there).
+ * Load LLM config with precedence:
+ * 1. Existing env vars (shell/process)
+ * 2. .env in current working directory (dotenv fills only missing env vars)
+ * 3. Optional file: ./config.json in current working directory
+ *    (provider, model, maxHistoryMessages, maxToolSteps, maxOutputTokens; never put keys there)
+ * Env vars used: POTION_KIT_PROVIDER, POTION_KIT_MODEL, OPENAI_API_KEY / ANTHROPIC_API_KEY / MOONSHOT_API_KEY.
  *    See config.example.json in this package.
  */
 export function loadLlmConfig(): LlmConfig | null {
@@ -51,6 +53,10 @@ export function loadLlmConfig(): LlmConfig | null {
   const maxHistoryMessages = parseMaxHistoryMessages(
     process.env.POTION_KIT_MAX_HISTORY_MESSAGES ?? file.maxHistoryMessages
   );
+  const maxToolSteps = parsePositiveInt(process.env.POTION_KIT_MAX_TOOL_STEPS ?? file.maxToolSteps);
+  const maxOutputTokens = parsePositiveInt(
+    process.env.POTION_KIT_MAX_OUTPUT_TOKENS ?? file.maxOutputTokens
+  );
 
   return {
     provider,
@@ -58,6 +64,8 @@ export function loadLlmConfig(): LlmConfig | null {
     apiKey,
     baseUrl: process.env.POTION_KIT_BASE_URL || undefined,
     maxHistoryMessages,
+    maxToolSteps,
+    maxOutputTokens,
   };
 }
 
@@ -65,6 +73,8 @@ function readConfigFile(): {
   provider?: string;
   model?: string;
   maxHistoryMessages?: number;
+  maxToolSteps?: number;
+  maxOutputTokens?: number;
 } {
   const configPath = join(process.cwd(), CONFIG_FILE);
   if (!existsSync(configPath)) {
@@ -76,11 +86,15 @@ function readConfigFile(): {
       provider?: string;
       model?: string;
       maxHistoryMessages?: number;
+      maxToolSteps?: number;
+      maxOutputTokens?: number;
     };
     return {
       provider: data.provider,
       model: data.model,
       maxHistoryMessages: data.maxHistoryMessages,
+      maxToolSteps: data.maxToolSteps,
+      maxOutputTokens: data.maxOutputTokens,
     };
   } catch {
     return {};
@@ -88,10 +102,14 @@ function readConfigFile(): {
 }
 
 function parseMaxHistoryMessages(value: string | number | undefined): number | undefined {
+  return parsePositiveInt(value);
+}
+
+export { CONFIG_FILE };
+
+function parsePositiveInt(value: string | number | undefined): number | undefined {
   if (value === undefined) return undefined;
   const n = typeof value === "string" ? parseInt(value, 10) : value;
   if (!Number.isFinite(n) || n < 1) return undefined;
   return n;
 }
-
-export { CONFIG_FILE };

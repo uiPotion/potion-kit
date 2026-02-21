@@ -1,1 +1,7 @@
-{"provider":"openai","model":"gpt-5.2","maxHistoryMessages":10}
+{
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "maxHistoryMessages": 10,
+  "maxToolSteps": 16,
+  "maxOutputTokens": 16384
+}

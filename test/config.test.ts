@@ -69,6 +69,8 @@ describe("config", () => {
         "POTION_KIT_PROVIDER",
         "POTION_KIT_MODEL",
         "POTION_KIT_MAX_HISTORY_MESSAGES",
+        "POTION_KIT_MAX_TOOL_STEPS",
+        "POTION_KIT_MAX_OUTPUT_TOKENS",
         "OPENAI_API_KEY",
       ]);
       const originalCwd = process.cwd();
@@ -77,19 +79,61 @@ describe("config", () => {
         process.chdir(dir);
         writeFileSync(
           join(dir, "config.json"),
-          JSON.stringify({ provider: "openai", model: "gpt-5.2", maxHistoryMessages: 7 }),
+          JSON.stringify({
+            provider: "openai",
+            model: "gpt-5.2",
+            maxHistoryMessages: 7,
+            maxToolSteps: 9,
+            maxOutputTokens: 5000,
+          }),
           "utf-8"
         );
         process.env.OPENAI_API_KEY = "sk-test-key";
         delete process.env.POTION_KIT_PROVIDER;
         delete process.env.POTION_KIT_MODEL;
         delete process.env.POTION_KIT_MAX_HISTORY_MESSAGES;
+        delete process.env.POTION_KIT_MAX_TOOL_STEPS;
+        delete process.env.POTION_KIT_MAX_OUTPUT_TOKENS;
 
         const config = loadLlmConfig();
         assert.ok(config !== null);
         assert.strictEqual(config!.provider, "openai");
         assert.strictEqual(config!.model, "gpt-5.2");
         assert.strictEqual(config!.maxHistoryMessages, 7);
+        assert.strictEqual(config!.maxToolSteps, 9);
+        assert.strictEqual(config!.maxOutputTokens, 5000);
+      } finally {
+        process.chdir(originalCwd);
+        rmSync(dir, { recursive: true, force: true });
+        restoreEnv();
+      }
+    });
+
+    it("env vars override local config for optional limits", () => {
+      saveEnv([
+        "POTION_KIT_PROVIDER",
+        "POTION_KIT_MAX_TOOL_STEPS",
+        "POTION_KIT_MAX_OUTPUT_TOKENS",
+        "OPENAI_API_KEY",
+      ]);
+      const originalCwd = process.cwd();
+      const dir = mkdtempSync(join(tmpdir(), "potion-kit-config-"));
+      try {
+        process.chdir(dir);
+        writeFileSync(
+          join(dir, "config.json"),
+          JSON.stringify({ provider: "openai", maxToolSteps: 9, maxOutputTokens: 5000 }),
+          "utf-8"
+        );
+        process.env.OPENAI_API_KEY = "sk-test-key";
+        process.env.POTION_KIT_PROVIDER = "openai";
+        process.env.POTION_KIT_MAX_TOOL_STEPS = "7";
+        process.env.POTION_KIT_MAX_OUTPUT_TOKENS = "3000";
+
+        const config = loadLlmConfig();
+        assert.ok(config !== null);
+        assert.strictEqual(config!.maxToolSteps, 7);
+        assert.strictEqual(config!.maxOutputTokens, 3000);
       } finally {
         process.chdir(originalCwd);
         rmSync(dir, { recursive: true, force: true });

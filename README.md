@@ -2,13 +2,13 @@
 
 CLI to build websites with **HaroldJS** (haroldjs.com) and **UIPotion** (uipotion.com): static sites with Handlebars, Markdown, and SCSS only. Chat with the AI to design and build your site; the model uses the UIPotion catalog and HaroldJS conventions and can only suggest components from real specs.
 
-> **Note:** potion-kit is actively developed — we’re improving and optimizing it over time. For the best experience we recommend the **newest OpenAI or Anthropic models**; they handle the outcome quality best. Extensive use consumes API tokens and costs depend on your provider’s pricing. By using the tool you accept it as-is; only you decide whether and how much to use it. We hope you enjoy building with it.
+> **Note:** potion-kit is actively vibe coded — we’re improving and optimizing it over time. For the best experience we recommend the **newest OpenAI or Anthropic models**; they handle the outcome quality best. For a good cheaper option, use **Kimi K2.5**. Extensive use consumes API tokens and costs depend on your provider’s pricing. By using the tool you accept it as-is; only you decide whether and how much to use it. We hope you enjoy building with it.
 
 ## Commands
 
 - **`potion-kit chat`** — Interactive chat.
 - **`potion-kit chat "message"`** — Send one message and exit (one-shot).
-- **`potion-kit clear`** — Clear chat history for this project (next chat starts a new conversation).
+- **`potion-kit clear`** — Clear chat state for this project (history, summary cache, and event trace ledger).
 - **`potion-kit`** or **`potion-kit --help`** — Show usage and available commands. Unknown commands (e.g. `potion-kit clean`) also show help and do not call the API.
 
 ---
@@ -87,11 +87,11 @@ npx potion-kit chat "Let's build a docs site"
 
 ### Config
 
-Config is loaded in this order (later overrides earlier):
+Config precedence (highest to lowest):
 
-1. **`.env` in the current working directory** (where you run potion-kit).
-2. **Environment variables** (e.g. `OPENAI_API_KEY`, `POTION_KIT_PROVIDER`).
-3. **`./config.json`** (in the current working directory) — provider, model, and optional `maxHistoryMessages`; **do not put API keys there**.
+1. **Environment variables** already present in your shell/process (e.g. `OPENAI_API_KEY`, `POTION_KIT_PROVIDER`).
+2. **`.env` in the current working directory** (loaded by dotenv only for variables not already set).
+3. **`./config.json`** (in the current working directory) — provider, model, and optional `maxHistoryMessages`, `maxToolSteps`, `maxOutputTokens`; **do not put API keys there**.
 
 #### .env variables
 
@@ -99,10 +99,12 @@ Config is loaded in this order (later overrides earlier):
 |----------|----------|-------------|
 | `POTION_KIT_PROVIDER` | yes | `openai`, `anthropic`, or `moonshot` |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `MOONSHOT_API_KEY` | one required | API key for the chosen provider |
-| `POTION_KIT_MODEL` | no | Chat model id (defaults: `gpt-5.2` / `claude-sonnet-4-5`). Must be a **chat** model. |
+| `POTION_KIT_MODEL` | no | Chat model id (defaults: `gpt-5.2` / `claude-sonnet-4-5` / `kimi-k2.5`). Must be a **chat** model. |
 | `POTION_KIT_API_KEY` | no | Fallback key if provider-specific key is not set |
 | `POTION_KIT_BASE_URL` | no | Custom base URL for the chosen provider (e.g. proxy, LiteLLM) |
 | `POTION_KIT_MAX_HISTORY_MESSAGES` | no | Max conversation turns sent to the API (default 10) |
+| `POTION_KIT_MAX_TOOL_STEPS` | no | Max tool steps per turn (default 16) |
+| `POTION_KIT_MAX_OUTPUT_TOKENS` | no | Max output tokens per turn (default 16384) |
 
 **Minimal `.env`:**
 
@@ -129,7 +131,15 @@ OPENAI_API_KEY=sk-your-key-here
 
 ### Chat history
 
-Conversation is stored in **`.potion-kit/chat-history.json`** in the directory where you run `potion-kit chat`. The model uses it for context on the next run. Each request sends: the **first user message** (always kept), a **condensed summary** of the middle conversation (when history exceeds capacity), and the **last N messages** (default 10). Set `POTION_KIT_MAX_HISTORY_MESSAGES` or `maxHistoryMessages` in `./config.json` to change the tail size. Add `.potion-kit/` to `.gitignore` if you don’t want to commit chat history. Use `potion-kit clear` to reset history for that project.
+Conversation is stored in **`.potion-kit/chat-history.json`** in the directory where you run `potion-kit chat`. The model uses it for context on the next run. Each request sends: the **first user message** (always kept), a **condensed summary** of the middle conversation (when history exceeds capacity), and the **last N messages** (default 10). Summary state is cached in `.potion-kit/chat-summary.json` and updated incrementally to avoid re-summarizing the same old turns every request. Per-turn tool traces are stored in `.potion-kit/chat-events.json` so completion claims can be cross-checked against recorded tool activity. Set `POTION_KIT_MAX_HISTORY_MESSAGES` or `maxHistoryMessages` in `./config.json` to change the tail size, and tune generation with `POTION_KIT_MAX_TOOL_STEPS` / `POTION_KIT_MAX_OUTPUT_TOKENS`. Add `.potion-kit/` to `.gitignore` if you don’t want to commit chat state. Use `potion-kit clear` to reset chat state for that project.
+
+**File formats (`.potion-kit/`):**
+
+- **`chat-history.json`** — Array of `{ role: "user" | "assistant", content: string }`. Raw conversation in order.
+- **`chat-summary.json`** — Object: `summary` (string), `summarizedUntil` (number, exclusive index into history), `firstUserMessage` (string, for cache validation), `incrementalUpdates` (number).
+- **`chat-events.json`** — Array of per-turn events. Each: `timestamp` (ISO string), `trace` (`stepsUsed`, `finishReason`, `toolEvents`: `{ toolName, ok }[]`), `hasVerifiedWrite` (true if this turn had a successful `write_project_file`), `replyWasGuarded` (true if the reply looked like a completion claim but had no verified write), optional `summarySource`.
+
+**Summaries:** The middle-conversation summary is generated by the same model as chat (one extra API call when history exceeds the tail). The model is asked for at least 2–3 sentences or 3–5 bullet points. If it returns a valid plain-text summary of at least 80 characters it is stored and reused; if the response is empty or too short, a local fallback (condensed last messages) is used instead so the cache never stores stub summaries. Use a capable chat model (e.g. GPT-4o, Claude Sonnet) for best summary quality; very small or completion-only models may often trigger the fallback.
 
 ### Legal
 

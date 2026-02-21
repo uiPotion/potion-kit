@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.0.6] - 2026-02-21
+
+### Added
+
+- **Rolling summary cache** — Chat now stores incremental summary state in `.potion-kit/chat-summary.json` and reuses it, summarizing only new middle turns instead of re-summarizing all old turns every request.
+- **Configurable token/step limits** — Added `POTION_KIT_MAX_TOOL_STEPS` and `POTION_KIT_MAX_OUTPUT_TOKENS` (also supported in `./config.json` as `maxToolSteps` and `maxOutputTokens`).
+- **Per-turn tool trace ledger** — Chat now records structured per-turn tool activity in `.potion-kit/chat-events.json` for easier verification/debugging of what tools ran.
+
+### Changed
+
+- **Clear command behavior** — `potion-kit clear` now clears chat history, cached summary state, and turn-event traces for the current project.
+- **Tail selection and summary consistency** — Long-history chat now sends the full last N messages (user + assistant) for continuity; assistant claims remain untrusted and should be verified with tools/files.
+- **Summary drift guard** — Cached summaries now perform a full middle-history refresh every 8 incremental updates to reduce long-run summary-of-summary drift.
+- **Completion-claim guardrail** — Assistant replies that claim completion (e.g. "I've updated the file") without a successful `write_project_file` in that turn are now flagged in CLI output. Chat history is kept clean (no annotations written to disk).
+- **Summary quality** — Model-generated summaries must be at least 80 characters; shorter responses are rejected and the local fallback (condensed last messages) is used instead, avoiding stub entries like "Current project state: - Auth". Summarizer prompts now ask for at least 2–3 sentences or 3–5 bullet points (primary) or at least 3 lines (retry) so summaries remain useful for context.
+- **Summarization flow** — Long middle conversation is split into small chunks (e.g. 10 messages each). Each chunk is summarized together with the previous summary, so one final summary covers the whole range. We no longer fall back to summarizing only the last few messages, so context from the middle is never dropped.
+
 ## [0.0.5] - 2026-02-11
 
 ### Added
@@ -25,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Coverage for long-history behavior** — Updated chat message tests to assert the new reliability rule and long-history message selection behavior.
 
 [0.0.5]: https://github.com/uiPotion/potion-kit/compare/v0.0.4...v0.0.5
+[0.0.6]: https://github.com/uiPotion/potion-kit/compare/v0.0.5...v0.0.6
 
 ## [0.0.4] - 2026-02-10
 

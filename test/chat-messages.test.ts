@@ -33,7 +33,7 @@ describe("chat-messages", () => {
     assert.strictEqual(out[4].content, "Now");
   });
 
-  it("long history (30 msgs, max 10): first + last 10 + current, summary in system", () => {
+  it("long history (30 msgs, max 10): first + summary message + full last 10 + current", () => {
     const h = Array.from({ length: 30 }, (_, i) =>
       msg(i % 2 === 0 ? "user" : "assistant", `m${i}`)
     );
@@ -41,18 +41,23 @@ describe("chat-messages", () => {
     const out = buildMessages(sys, h, "Current", 10, summary);
 
     assert.strictEqual(out[0].role, "system");
-    assert.ok((out[0].content as string).includes(summary));
-    assert.ok((out[0].content as string).includes("## Prior conversation"));
     assert.ok((out[0].content as string).includes("## Reliability rule"));
 
     assert.strictEqual(out[1].content, "m0");
-    assert.strictEqual(out[2].content, "m20");
-    assert.strictEqual(out[3].content, "m22");
-    assert.strictEqual(out[4].content, "m24");
-    assert.strictEqual(out[5].content, "m26");
-    assert.strictEqual(out[6].content, "m28");
-    assert.strictEqual(out[7].content, "m29");
-    assert.strictEqual(out[8].content, "Current");
-    assert.strictEqual(out.length, 9);
+    assert.strictEqual(out[2].role, "assistant");
+    assert.ok((out[2].content as string).includes(summary));
+    assert.ok((out[2].content as string).includes("Context summary of earlier conversation turns"));
+    assert.strictEqual(out[3].content, "m20");
+    assert.strictEqual(out[4].content, "m21");
+    assert.strictEqual(out[5].content, "m22");
+    assert.strictEqual(out[6].content, "m23");
+    assert.strictEqual(out[7].content, "m24");
+    assert.strictEqual(out[8].content, "m25");
+    assert.strictEqual(out[9].content, "m26");
+    assert.strictEqual(out[10].content, "m27");
+    assert.strictEqual(out[11].content, "m28");
+    assert.strictEqual(out[12].content, "m29");
+    assert.strictEqual(out[13].content, "Current");
+    assert.strictEqual(out.length, 14);
   });
 });
